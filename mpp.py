@@ -1,8 +1,9 @@
-from collections import defaultdict
-import numpy as np
-from typing import Dict, List, Union
-from glob import glob
 import os
+from collections import defaultdict
+from glob import glob
+from typing import Dict, List, Union
+
+import numpy as np
 
 
 class Markov:
@@ -114,4 +115,5 @@ class MarkovModel:
 
     @staticmethod
     def _missing(substring: str) -> None:
+        """Raises error for missing substring in this Markov model"""
         raise KeyError('{} not in this Markov model'.format(substring))
