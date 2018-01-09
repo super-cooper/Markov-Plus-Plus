@@ -64,6 +64,24 @@ class MarkovModel:
 
     def __add__(self, regex: str) -> None:
         """Adds text files to this Markov model. Accepts globs to directory locations. Use '' for cwd"""
+        for f in MarkovModel.get_files(regex):
+            with open(f, 'r') as io:
+                text = io.read()
+                for i in range(len(text) - (self.k + 1)):
+                    # Grab a k-length substring starting at index i in the text
+                    sub = text[i:i+self.k]
+                    if i == 0:
+                        self.starts.append(sub)
+                    if sub not in self._subs:
+                        self._subs[sub] = Markov(sub)
+                    else:
+                        self._subs[sub].add()
+                    # Add the character directly after the substring as a suffix, or increase its counter by 1
+                    self._subs[sub].add_suffix(text[i + self.k + 1])
+
+    @staticmethod
+    def get_files(regex: str) -> List[str]:
+        files = []
         for path in glob(regex if regex != '' else os.getcwd()):
             # Skip all non-directories
             if not os.path.isdir(path):
@@ -71,22 +89,10 @@ class MarkovModel:
             # List all the files in the directory being used
             for f in os.listdir(path):
                 # Skip previously read texts and nested directories (only use plain files)
-                if os.path.isdir(f) or f in self._texts:
+                if os.path.isdir(f):
                     continue
-                self._texts.add(f)
-                with open(f, 'r') as io:
-                    text = io.read()
-                    for i in range(len(text) - (self.k + 1)):
-                        # Grab a k-length substring starting at index i in the text
-                        sub = text[i:i+self.k]
-                        if i == 0:
-                            self.starts.append(sub)
-                        if sub not in self._subs:
-                            self._subs[sub] = Markov(sub)
-                        else:
-                            self._subs[sub].add()
-                        # Add the character directly after the substring as a suffix, or increase its counter by 1
-                        self._subs[sub].add_suffix(text[i + self.k + 1])
+                files.append(f)
+        return files
 
     def get_subs(self) -> List[str]:
         """Returns a list of all substrings in this Markov model"""
