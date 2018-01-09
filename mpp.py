@@ -80,21 +80,6 @@ class MarkovModel:
                     # Add the character directly after the substring as a suffix, or increase its counter by 1
                     self._subs[sub].add_suffix(text[i + self.k + 1])
 
-    @staticmethod
-    def get_files(regex: str) -> List[str]:
-        files = []
-        for path in glob(regex if regex != '' else os.getcwd()):
-            # Skip all non-directories
-            if not os.path.isdir(path):
-                continue
-            # List all the files in the directory being used
-            for f in os.listdir(path):
-                # Skip nested directories (only use plain files)
-                if os.path.isdir(f):
-                    continue
-                files.append(f)
-        return files
-
     def get_subs(self) -> List[str]:
         """Returns a list of all substrings in this Markov model"""
         return list(self._subs.keys())
@@ -124,3 +109,23 @@ class MarkovModel:
     def _missing(substring: str) -> None:
         """Raises error for missing substring in this Markov model"""
         raise KeyError('{} not in this Markov model'.format(substring))
+
+
+class Utils:
+    """Class for Markov model utilities"""
+
+    @staticmethod
+    def get_files(regex: str) -> List[str]:
+        """Globs together directories and pulls all the files out of them"""
+        files = []
+        for path in glob(regex if regex != '' else os.getcwd()):
+            # Skip all non-directories
+            if not os.path.isdir(path):
+                continue
+            # List all the files in the directory being used
+            for f in os.listdir(path):
+                # Skip nested directories (only use plain files)
+                if os.path.isdir(f):
+                    continue
+                files.append(f)
+        return files
