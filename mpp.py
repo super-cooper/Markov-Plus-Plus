@@ -64,7 +64,7 @@ class MarkovModel:
 
     def __add__(self, regex: str) -> None:
         """Adds text files to this Markov model. Accepts globs to directory locations. Use '' for cwd"""
-        for f in [_f for _f in MarkovModel.get_files(regex) if _f not in self._texts]:
+        for f in [_f for _f in Utils.get_files(regex) if _f not in self._texts]:
             self._texts.add(f)
             with open(f, 'r') as io:
                 text = io.read()
