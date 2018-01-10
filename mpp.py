@@ -105,6 +105,9 @@ class MarkovModel:
         """Returns a random starting string (the first k characters in any of the files used)"""
         return np.random.choice(self.starts)
 
+    def __len__(self) -> int:
+        return sum(m.count() for m in self._subs.values())
+
     @staticmethod
     def _missing(substring: str) -> None:
         """Raises error for missing substring in this Markov model"""
