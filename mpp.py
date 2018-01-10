@@ -130,5 +130,5 @@ class Utils:
                 # Skip nested directories (only use plain files)
                 if os.path.isdir(f):
                     continue
-                files.append(f)
+                files.append(path + '/' + f)
         return files
