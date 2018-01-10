@@ -59,8 +59,8 @@ class MarkovModel:
         self._subs: Dict[str, Markov] = {}
         self._texts = set()
         self.k = k
-        self.__add__(regex)
         self.starts = []
+        self.__add__(regex)
 
     def __add__(self, regex: str) -> None:
         """Adds text files to this Markov model. Accepts globs to directory locations. Use '' for cwd"""
