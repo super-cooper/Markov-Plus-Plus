@@ -49,7 +49,7 @@ class Markov:
 class MarkovModel:
     """Represents a Markov model of given text input"""
 
-    def __init__(self, regex: str='', k: int=12) -> None:
+    def __init__(self, regex: str=None, k: int=12) -> None:
         """Initializes a Markov model to a given set of directories filled with text files
 
         Keyword Arguments:
@@ -121,7 +121,7 @@ class Utils:
     def get_files(regex: str) -> List[str]:
         """Globs together directories and pulls all the files out of them"""
         files = []
-        for path in glob(regex if regex != '' else os.getcwd()):
+        for path in glob(regex if regex is not None else os.getcwd()):
             # Skip all non-directories
             if not os.path.isdir(path):
                 continue
