@@ -66,7 +66,7 @@ class MarkovModel:
         """Adds text files to this Markov model. Accepts globs to directory locations. Use '' for cwd"""
         for f in [_f for _f in Utils.get_files(regex) if _f not in self._texts]:
             self._texts.add(f)
-            with open(f, 'r') as io:
+            with open(f, 'r', encoding='utf-8') as io:
                 text = io.read()
                 for i in range(len(text) - (self.k + 1)):
                     # Grab a k-length substring starting at index i in the text
