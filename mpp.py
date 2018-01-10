@@ -78,7 +78,7 @@ class MarkovModel:
                     else:
                         self._subs[sub].add()
                     # Add the character directly after the substring as a suffix, or increase its counter by 1
-                    self._subs[sub].add_suffix(text[i + self.k + 1])
+                    self._subs[sub].add_suffix(text[i + self.k])
 
     def get_subs(self) -> List[str]:
         """Returns a list of all substrings in this Markov model"""
