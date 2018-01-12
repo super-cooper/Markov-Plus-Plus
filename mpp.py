@@ -120,10 +120,10 @@ class Utils:
     _num_check = re.compile('[0-9]+((\.[0-9]+)?)')
 
     @staticmethod
-    def get_files(regex: str) -> List[str]:
+    def get_files(regex: str=None) -> List[str]:
         """Globs together directories and pulls all the files out of them"""
         files = []
-        for path in glob(regex if regex is not None else os.getcwd()):
+        for path in glob(regex if regex is not None else r'*'):
             # Skip all non-directories
             if not os.path.isdir(path):
                 continue
@@ -141,6 +141,15 @@ class Utils:
         r = Utils._num_check.match(str(v))
         return r is not None and None not in r.groups()
 
+    @staticmethod
+    def safe_path(path: str, is_dir=False) -> str:
+        """Creates a version of the path such that no files/directories will be overwritten"""
+        possible = re.compile(r'^' + path + r'(\([0-9]+\))?' + r'$')
+        # Get a list of all files/dirs in the cwd depending on whether or not is_dir is true
+        files = [f for f in glob('*') if possible.match(f) is not None and (is_dir == os.path.isdir(f))]
+        last = max(int(f[-2]) if f.endswith(')') else 0 for f in files) if len(files) > 0 else -1
+        return path + ('' if last == -1 else '({})'.format(str(last + 1)))
+
 
 class MarkovRNN:
     """Class that represents a recurrent neural network used for text generation"""
@@ -149,7 +158,7 @@ class MarkovRNN:
     def __init__(self,
                  learning_rate=0.001,
                  neurons=20,
-                 logging: bool=False, log_file: str=None,
+                 log_file: str=None,
                  verbose: bool=False,
                  name=None) -> None:
         """Creates an instance of an RNN
@@ -157,19 +166,18 @@ class MarkovRNN:
         Keyword Arguments:
             learning_rate - The learning rate of this RNN (default 0.001)
             neurons - The number of neurons for the input layer (default 20)
-            logging - Tells if the progress of this neural network will be logged
+            log_file - Will log the progress of the neural network to a file if a path is provided
             verbose - Tells if updates to this neural network will be printed to the console
             name - The name of this neural network
         """
-        self._log: bool = logging
         self._verbose: bool = verbose
         self._learning_rate: float = float(learning_rate)
         self._name: str = str(name) if name is not None else None
         if name is None:
             self._name = 'unnamed_MarkovRNN-' + str(MarkovRNN._unnamed)
             MarkovRNN._unnamed += 1
-        self._log_file: str = log_file
-        self.neurons: int = int(neurons)
+        self._log_file: str = Utils.safe_path('log/' + log_file if log_file is not None else self._name + '-log')
+        self._neurons: int = int(neurons)
 
     def get_name(self) -> str:
         """Returns the generic name of this RNN"""
