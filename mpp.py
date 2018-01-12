@@ -3,6 +3,7 @@ import re
 from collections import defaultdict
 from glob import glob
 from typing import Dict, List, Union
+import time
 
 import numpy as np
 
@@ -158,16 +159,17 @@ class MarkovRNN:
     def __init__(self,
                  learning_rate=0.001,
                  neurons=20,
-                 log_file: str=None,
-                 verbose: bool=False,
+                 logging: bool=False, verbose: bool=False, gm_time: bool=False, log_file: str=None,
                  name=None) -> None:
         """Creates an instance of an RNN
 
         Keyword Arguments:
             learning_rate - The learning rate of this RNN (default 0.001)
             neurons - The number of neurons for the input layer (default 20)
-            log_file - Will log the progress of the neural network to a file if a path is provided
+            logging - Tells if this MarkovRNN is to be logged to a file
             verbose - Tells if updates to this neural network will be printed to the console
+            gm_time - Sets logging to Greenwich meantime rather than local time
+            log_file - The name of the log file for this MarkovRNN
             name - The name of this neural network
         """
         self._verbose: bool = verbose
@@ -177,8 +179,25 @@ class MarkovRNN:
             self._name = 'unnamed_MarkovRNN-' + str(MarkovRNN._unnamed)
             MarkovRNN._unnamed += 1
         self._log_file: str = Utils.safe_path('log/' + log_file if log_file is not None else self._name + '-log')
+        self._logging: bool = logging
         self._neurons: int = int(neurons)
+        self._log_time = time.gmtime if gm_time else time.localtime
+        self.log('Initialize ' + str(self))
 
     def get_name(self) -> str:
         """Returns the generic name of this RNN"""
         return self._name
+
+    def log(self, message: str=None) -> None:
+        """Logs a message or just the time if no message is provided. Covers both printing and file logging"""
+        out = time.strftime('[%a, %d %b %Y %H:%M:%S] ', self._log_time()) + message if message is not None else ''
+        if self._verbose:
+            print(out)
+        if self._logging:
+            with open(self._log_file, 'a+', encoding='utf-8') as log:
+                log.write(out + '\n')
+
+    def __str__(self) -> str:
+        """Returns a string representation of this MarkovRNN object (includes pertinent information)"""
+        return 'mpp.MarkovRNN(name={}, neurons={}, learning_rate={}'.format(
+            self._name, self._neurons, self._learning_rate)
