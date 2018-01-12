@@ -2,6 +2,7 @@ import os
 from collections import defaultdict
 from glob import glob
 from typing import Dict, List, Union
+import re
 
 import numpy as np
 
@@ -46,15 +47,15 @@ class Markov:
         return dict(self._suffixes)
 
 
-class MarkovModel:
-    """Represents a Markov model of given text input"""
+class MarkovChain:
+    """Represents a Markov chain of given text input"""
 
     def __init__(self, regex: str=None, k: int=12) -> None:
-        """Initializes a Markov model to a given set of directories filled with text files
+        """Initializes a Markov chain to a given set of directories filled with text files
 
         Keyword Arguments:
             regex - The glob pattern to grab directories of text files to use (default cwd)
-            k - The order of this Markov model (default 12)
+            k - The order of this Markov chain (default 12)
         """
         self._subs: Dict[str, Markov] = {}
         self._texts = set()
@@ -63,7 +64,7 @@ class MarkovModel:
         self.__add__(regex)
 
     def __add__(self, regex: str) -> None:
-        """Adds text files to this Markov model. Accepts globs to directory locations. Use '' for cwd"""
+        """Adds text files to this Markov chain. Accepts globs to directory locations. Use '' for cwd"""
         for f in [_f for _f in Utils.get_files(regex) if _f not in self._texts]:
             self._texts.add(f)
             with open(f, 'r', encoding='utf-8') as io:
@@ -81,14 +82,14 @@ class MarkovModel:
                     self._subs[sub].add_suffix(text[i + self.k])
 
     def get_subs(self) -> List[str]:
-        """Returns a list of all substrings in this Markov model"""
+        """Returns a list of all substrings in this Markov chain"""
         return list(self._subs.keys())
 
     def get_suffixes(self, substring: str, with_freq=False) -> Union[List[chr], Dict[chr, float]]:
-        """Returns either a list of all possible suffixes of a substring in this Markov model, or a dict containing
+        """Returns either a list of all possible suffixes of a substring in this Markov chain, or a dict containing
         those suffixes mapped to their frequencies"""
         if substring not in self._subs:
-            MarkovModel._missing(substring)
+            MarkovChain._missing(substring)
         suffs = self._subs[substring].suffixes()
         if with_freq:
             total = sum(suffs[c] for c in suffs)
@@ -98,7 +99,7 @@ class MarkovModel:
 
     def random_suffix(self, substring: str) -> chr:
         if substring not in self._subs:
-            MarkovModel._missing(substring)
+            MarkovChain._missing(substring)
         return self._subs[substring].random()
 
     def get_start(self) -> str:
@@ -110,12 +111,13 @@ class MarkovModel:
 
     @staticmethod
     def _missing(substring: str) -> None:
-        """Raises error for missing substring in this Markov model"""
-        raise KeyError('{} not in this Markov model'.format(substring))
+        """Raises error for missing substring in this Markov chain"""
+        raise KeyError('{} not in this Markov chain'.format(substring))
 
 
 class Utils:
-    """Class for Markov model utilities"""
+    """Class for Markov chain utilities"""
+    _num_check = re.compile('[0-9]+((\.[0-9]+)?)')
 
     @staticmethod
     def get_files(regex: str) -> List[str]:
@@ -132,3 +134,43 @@ class Utils:
                     continue
                 files.append(path + '/' + f)
         return files
+
+    @staticmethod
+    def is_num(v) -> bool:
+        """Tells if a variable is a number"""
+        r = Utils._num_check.match(str(v))
+        return r is not None and None not in r.groups()
+
+
+class MarkovRNN:
+    """Class that represents a recurrent neural network used for text generation"""
+    _unnamed = 0
+
+    def __init__(self,
+                 learning_rate=0.001,
+                 neurons=20,
+                 logging: bool=False, log_file: str=None,
+                 verbose: bool=False,
+                 name=None) -> None:
+        """Creates an instance of an RNN
+
+        Keyword Arguments:
+            learning_rate - The learning rate of this RNN (default 0.001)
+            neurons - The number of neurons for the input layer (default 20)
+            logging - Tells if the progress of this neural network will be logged
+            verbose - Tells if updates to this neural network will be printed to the console
+            name - The name of this neural network
+        """
+        self._log: bool = logging
+        self._verbose: bool = verbose
+        self._learning_rate: float = float(learning_rate)
+        self._name: str = str(name) if name is not None else None
+        if name is None:
+            self._name = 'unnamed_MarkovRNN-' + str(MarkovRNN._unnamed)
+            MarkovRNN._unnamed += 1
+        self._log_file: str = log_file
+        self.neurons: int = int(neurons)
+
+    def get_name(self) -> str:
+        """Returns the generic name of this RNN"""
+        return self._name
