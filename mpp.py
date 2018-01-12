@@ -176,7 +176,7 @@ class MarkovNN:
         self._learning_rate: float = float(learning_rate)
         self._name: str = str(name) if name is not None else None
         if name is None:
-            self._name = 'unnamed_MarkovRNN-' + str(MarkovNN._unnamed)
+            self._name = 'unnamed_MarkovNN-' + str(MarkovNN._unnamed)
             MarkovNN._unnamed += 1
         self._log_file: str = Utils.safe_path('log/' + log_file if log_file is not None else self._name + '-log')
         self._logging: bool = logging
