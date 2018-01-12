@@ -152,7 +152,7 @@ class Utils:
         return path + ('' if last == -1 else '({})'.format(str(last + 1)))
 
 
-class MarkovRNN:
+class MarkovNN:
     """Class that represents a recurrent neural network used for text generation"""
     _unnamed = 0
 
@@ -166,18 +166,18 @@ class MarkovRNN:
         Keyword Arguments:
             learning_rate - The learning rate of this RNN (default 0.001)
             neurons - The number of neurons for the input layer (default 20)
-            logging - Tells if this MarkovRNN is to be logged to a file
+            logging - Tells if this MarkovNN is to be logged to a file
             verbose - Tells if updates to this neural network will be printed to the console
             gm_time - Sets logging to Greenwich meantime rather than local time
-            log_file - The name of the log file for this MarkovRNN
+            log_file - The name of the log file for this MarkovNN
             name - The name of this neural network
         """
         self._verbose: bool = verbose
         self._learning_rate: float = float(learning_rate)
         self._name: str = str(name) if name is not None else None
         if name is None:
-            self._name = 'unnamed_MarkovRNN-' + str(MarkovRNN._unnamed)
-            MarkovRNN._unnamed += 1
+            self._name = 'unnamed_MarkovRNN-' + str(MarkovNN._unnamed)
+            MarkovNN._unnamed += 1
         self._log_file: str = Utils.safe_path('log/' + log_file if log_file is not None else self._name + '-log')
         self._logging: bool = logging
         self._neurons: int = int(neurons)
@@ -198,6 +198,6 @@ class MarkovRNN:
                 log.write(out + '\n')
 
     def __str__(self) -> str:
-        """Returns a string representation of this MarkovRNN object (includes pertinent information)"""
-        return 'mpp.MarkovRNN(name={}, neurons={}, learning_rate={}'.format(
+        """Returns a string representation of this MarkovNN object (includes pertinent information)"""
+        return 'mpp.MarkovNN(name={}, neurons={}, learning_rate={}'.format(
             self._name, self._neurons, self._learning_rate)
