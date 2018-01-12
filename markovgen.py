@@ -1,6 +1,6 @@
 import sys
 from typing import List
-from mpp import MarkovModel
+from mpp import MarkovChain
 import getopt
 
 options = 'd:hn:'
@@ -31,7 +31,7 @@ def main(argv: List[str]) -> None:
             print('Argument {}: {} not recognized'.format(opt, arg))
             sys.exit(1)
 
-    model = MarkovModel(dir_pattern)
+    model = MarkovChain(dir_pattern)
 
     if dir_pattern is None or len(model) == 0:
         print('Must supply directory with working files')
