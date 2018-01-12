@@ -1,8 +1,8 @@
 import os
+import re
 from collections import defaultdict
 from glob import glob
 from typing import Dict, List, Union
-import re
 
 import numpy as np
 
