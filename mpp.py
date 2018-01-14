@@ -246,4 +246,4 @@ class TextCNN(TextRNN):
 
     def filter_name(self) -> str:
         """Returns the standard name for a filter tensor for this TextCNN"""
-        return self._name + TextCNN.FILTER_NAME
+        return self._name + '-' + TextCNN.FILTER_NAME
