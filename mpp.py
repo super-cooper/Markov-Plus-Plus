@@ -208,10 +208,11 @@ class TextCNN(TextRNN):
     """Class to represent convolutional neural network for text generation/classification"""
     FILTER_NAME = 'filter'
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, filter_width: int=3, *args, **kwargs):
         """Creates an instance of an RNN
 
         Keyword Arguments:
+            filter_width - The width of the filter for the network (default 3, recommended not to change this)
             learning_rate - The learning rate of this CNN (default 0.001)
             neurons - The number of neurons for the input layer (default 20)
             logging - Tells if this TextCNN is to be logged to a file
@@ -221,6 +222,7 @@ class TextCNN(TextRNN):
             name - The name of this neural network
         """
         super().__init__(*args, **kwargs)
+        self.filter_width: int = filter_width
 
     @staticmethod
     def squash_text(input_layer: tf.Tensor, output_size: int, width: int, stride: int) -> tf.Tensor:
