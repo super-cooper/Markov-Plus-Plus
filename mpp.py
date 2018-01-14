@@ -173,15 +173,15 @@ class TextRNN:
             log_file - The name of the log file for this TextRNN
             name - The name of this neural network
         """
-        self._verbose: bool = verbose
-        self._learning_rate: float = float(learning_rate)
-        self._name: str = str(name) if name is not None else None
+        self._verbose = verbose
+        self._learning_rate = float(learning_rate)
+        self._name = str(name) if name is not None else None
         if name is None:
             self._name = 'unnamed_' + self.__class__.__name__ + '-' + str(self.__class__._unnamed)
             __class__._unnamed += 1
-        self._log_file: str = Utils.safe_path('log/' + log_file if log_file is not None else self._name + '-log')
-        self._logging: bool = logging
-        self._neurons: int = int(neurons)
+        self._log_file = Utils.safe_path('log/' + log_file if log_file is not None else self._name + '-log')
+        self._logging = logging
+        self._neurons = int(neurons)
         self._log_time = time.gmtime if gm_time else time.localtime
         self.log('Initialize ' + str(self))
 
@@ -222,7 +222,7 @@ class TextCNN(TextRNN):
             name - The name of this neural network
         """
         super().__init__(*args, **kwargs)
-        self.filter_width: int = filter_width
+        self.filter_width = filter_width
 
     @staticmethod
     def squash_text(input_layer: tf.Tensor, output_size: int, width: int, stride: int) -> tf.Tensor:
