@@ -1,11 +1,12 @@
 import os
 import re
+import time
 from collections import defaultdict
 from glob import glob
 from typing import Dict, List, Union
-import time
 
 import numpy as np
+import tensorflow as tf
 
 
 class Markov:
@@ -205,17 +206,39 @@ class TextRNN:
 
 class TextCNN(TextRNN):
     """Class to represent convolutional neural network for text generation/classification"""
+    FILTER_NAME = 'filter'
     
     def __init__(self, *args, **kwargs):
         """Creates an instance of an RNN
 
         Keyword Arguments:
-            learning_rate - The learning rate of this RNN (default 0.001)
+            learning_rate - The learning rate of this CNN (default 0.001)
             neurons - The number of neurons for the input layer (default 20)
-            logging - Tells if this TextRNN is to be logged to a file
+            logging - Tells if this TextCNN is to be logged to a file
             verbose - Tells if updates to this neural network will be printed to the console
             gm_time - Sets logging to Greenwich meantime rather than local time
             log_file - The name of the log file for this TextRNN
             name - The name of this neural network
         """
         super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def squash_text(input_layer: tf.Tensor, output_size: int, width: int, stride: int) -> tf.Tensor:
+        """Squashes the text into a '1D Image' to be used for convolution
+
+        Arguments:
+            input_layer - A Tensor with shape [batch_size, max_length, embedding_size] containing input data
+            output_size - The number of feature maps
+            width - The width of the filter
+            stride - Number of chars the filter will stride over
+        """
+        # This is basically the number of channels for the input
+        input_size = input_layer.get_shape()[-1]
+        # Here we change the shape to [batch_size, 1, max_length, output_size]
+        input_layer = tf.expand_dims(input_layer, axis=1)
+        # Create a filter of height 1
+        filter_ = tf.get_variable(TextCNN.FILTER_NAME, shape=[1, width, input_size, output_size])
+        # Do convolution normally
+        convoluted = tf.nn.conv2d(input_layer, filter=filter_, strides=[1, 1, stride, 1], padding='SAME')
+        # Return to proper shape for output layer
+        return tf.squeeze(convoluted, axis=1)
