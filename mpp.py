@@ -199,5 +199,5 @@ class MarkovNN:
 
     def __str__(self) -> str:
         """Returns a string representation of this MarkovNN object (includes pertinent information)"""
-        return 'mpp.MarkovNN(name={}, neurons={}, learning_rate={}'.format(
+        return __class__.__name__ + '(name={}, neurons={}, learning_rate={}'.format(
             self._name, self._neurons, self._learning_rate)
