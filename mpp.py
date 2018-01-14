@@ -225,14 +225,14 @@ class TextCNN(TextRNN):
         self.filter_width = filter_width
 
     @staticmethod
-    def squash_text(input_layer: tf.Tensor, output_size: int, width: int, stride: int) -> tf.Tensor:
+    def squash_text(input_layer: tf.Tensor, output_size: int, width: int, stride: int=1) -> tf.Tensor:
         """Squashes the text into a '1D Image' to be used for convolution
 
         Arguments:
             input_layer - A Tensor with shape [batch_size, max_length, embedding_size] containing input data
             output_size - The number of feature maps
             width - The width of the filter
-            stride - Number of chars the filter will stride over
+            stride - Number of chars the filter will stride over (default 1, recommended not to change this)
         """
         # This is basically the number of channels for the input
         input_size = input_layer.get_shape()[-1]
