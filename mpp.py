@@ -152,8 +152,8 @@ class Utils:
         return path + ('' if last == -1 else '({})'.format(str(last + 1)))
 
 
-class MarkovRNN:
-    """Class that represents a recurrent neural network used for text generation"""
+class TextRNN:
+    """Class that represents a recurrent neural network used for text generation/classification"""
     _unnamed = 0
 
     def __init__(self,
@@ -166,17 +166,17 @@ class MarkovRNN:
         Keyword Arguments:
             learning_rate - The learning rate of this RNN (default 0.001)
             neurons - The number of neurons for the input layer (default 20)
-            logging - Tells if this MarkovRNN is to be logged to a file
+            logging - Tells if this TextRNN is to be logged to a file
             verbose - Tells if updates to this neural network will be printed to the console
             gm_time - Sets logging to Greenwich meantime rather than local time
-            log_file - The name of the log file for this MarkovRNN
+            log_file - The name of the log file for this TextRNN
             name - The name of this neural network
         """
         self._verbose: bool = verbose
         self._learning_rate: float = float(learning_rate)
         self._name: str = str(name) if name is not None else None
         if name is None:
-            self._name = 'unnamed_' + __class__.__name__ + '-' + str(__class__._unnamed)
+            self._name = 'unnamed_' + self.__class__.__name__ + '-' + str(self.__class__._unnamed)
             __class__._unnamed += 1
         self._log_file: str = Utils.safe_path('log/' + log_file if log_file is not None else self._name + '-log')
         self._logging: bool = logging
@@ -198,12 +198,12 @@ class MarkovRNN:
                 log.write(out + '\n')
 
     def __str__(self) -> str:
-        """Returns a string representation of this MarkovRNN object (includes pertinent information)"""
-        return __class__.__name__ + '(name={}, neurons={}, learning_rate={}'.format(
+        """Returns a string representation of this TextRNN object (includes pertinent information)"""
+        return self.__class__.__name__ + '(name={}, neurons={}, learning_rate={}'.format(
             self._name, self._neurons, self._learning_rate)
 
 
-class MarkovCNN(MarkovRNN):
+class TextCNN(TextRNN):
     """Class to represent convolutional neural network for text generation/classification"""
     
     def __init__(self, *args, **kwargs):
@@ -212,10 +212,10 @@ class MarkovCNN(MarkovRNN):
         Keyword Arguments:
             learning_rate - The learning rate of this RNN (default 0.001)
             neurons - The number of neurons for the input layer (default 20)
-            logging - Tells if this MarkovRNN is to be logged to a file
+            logging - Tells if this TextRNN is to be logged to a file
             verbose - Tells if updates to this neural network will be printed to the console
             gm_time - Sets logging to Greenwich meantime rather than local time
-            log_file - The name of the log file for this MarkovRNN
+            log_file - The name of the log file for this TextRNN
             name - The name of this neural network
         """
         super().__init__(*args, **kwargs)
