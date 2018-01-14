@@ -52,7 +52,7 @@ class Markov:
 class MarkovChain:
     """Represents a Markov chain of given text input"""
 
-    def __init__(self, regex: str=None, k: int=12) -> None:
+    def __init__(self, regex: str=None, k=12) -> None:
         """Initializes a Markov chain to a given set of directories filled with text files
 
         Keyword Arguments:
@@ -160,7 +160,7 @@ class TextRNN:
     def __init__(self,
                  learning_rate=0.001,
                  neurons=20,
-                 logging: bool=False, verbose: bool=False, gm_time: bool=False, log_file: str=None,
+                 logging: bool=False, verbose=False, gm_time=False, log_file: str=None,
                  name=None) -> None:
         """Creates an instance of an RNN
 
@@ -208,7 +208,7 @@ class TextCNN(TextRNN):
     """Class to represent convolutional neural network for text generation/classification"""
     FILTER_NAME = 'filter'
     
-    def __init__(self, filter_width: int=3, *args, **kwargs):
+    def __init__(self, filter_width=3, *args, **kwargs):
         """Creates an instance of an RNN
 
         Keyword Arguments:
