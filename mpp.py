@@ -152,7 +152,7 @@ class Utils:
         return path + ('' if last == -1 else '({})'.format(str(last + 1)))
 
 
-class MarkovNN:
+class MarkovRNN:
     """Class that represents a recurrent neural network used for text generation"""
     _unnamed = 0
 
@@ -166,10 +166,10 @@ class MarkovNN:
         Keyword Arguments:
             learning_rate - The learning rate of this RNN (default 0.001)
             neurons - The number of neurons for the input layer (default 20)
-            logging - Tells if this MarkovNN is to be logged to a file
+            logging - Tells if this MarkovRNN is to be logged to a file
             verbose - Tells if updates to this neural network will be printed to the console
             gm_time - Sets logging to Greenwich meantime rather than local time
-            log_file - The name of the log file for this MarkovNN
+            log_file - The name of the log file for this MarkovRNN
             name - The name of this neural network
         """
         self._verbose: bool = verbose
@@ -198,6 +198,24 @@ class MarkovNN:
                 log.write(out + '\n')
 
     def __str__(self) -> str:
-        """Returns a string representation of this MarkovNN object (includes pertinent information)"""
+        """Returns a string representation of this MarkovRNN object (includes pertinent information)"""
         return __class__.__name__ + '(name={}, neurons={}, learning_rate={}'.format(
             self._name, self._neurons, self._learning_rate)
+
+
+class MarkovCNN(MarkovRNN):
+    """Class to represent convolutional neural network for text generation/classification"""
+    
+    def __init__(self, *args, **kwargs):
+        """Creates an instance of an RNN
+
+        Keyword Arguments:
+            learning_rate - The learning rate of this RNN (default 0.001)
+            neurons - The number of neurons for the input layer (default 20)
+            logging - Tells if this MarkovRNN is to be logged to a file
+            verbose - Tells if updates to this neural network will be printed to the console
+            gm_time - Sets logging to Greenwich meantime rather than local time
+            log_file - The name of the log file for this MarkovRNN
+            name - The name of this neural network
+        """
+        super().__init__(*args, **kwargs)
