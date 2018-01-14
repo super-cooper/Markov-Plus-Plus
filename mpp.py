@@ -238,8 +238,12 @@ class TextCNN(TextRNN):
         # Here we change the shape to [batch_size, 1, max_length, output_size]
         input_layer = tf.expand_dims(input_layer, axis=1)
         # Create a filter of height 1
-        filter_ = tf.get_variable(self._name + TextCNN.FILTER_NAME, shape=[1, width, input_size, output_size])
+        filter_ = tf.get_variable(self.filter_name(), shape=[1, width, input_size, output_size])
         # Do convolution normally
         convoluted = tf.nn.conv2d(input_layer, filter=filter_, strides=[1, 1, stride, 1], padding='SAME')
         # Return to proper shape for output layer
         return tf.squeeze(convoluted, axis=1)
+
+    def filter_name(self) -> str:
+        """Returns the standard name for a filter tensor for this TextCNN"""
+        return self._name + TextCNN.FILTER_NAME
