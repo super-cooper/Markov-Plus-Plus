@@ -146,7 +146,7 @@ class Utils:
     @staticmethod
     def safe_path(path: str, is_dir=False) -> str:
         """Creates a version of the path such that no files/directories will be overwritten"""
-        possible = re.compile(r'^' + path + r'(\([0-9]+\))?' + r'$')
+        possible = re.compile(r'^' + path + r'(\([0-9]+\))?$')
         # Get a list of all files/dirs in the cwd depending on whether or not is_dir is true
         files = [f for f in glob('*') if possible.match(f) is not None and (is_dir == os.path.isdir(f))]
         last = max(int(f[-2]) if f.endswith(')') else 0 for f in files) if len(files) > 0 else -1
