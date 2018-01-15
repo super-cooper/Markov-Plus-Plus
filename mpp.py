@@ -152,6 +152,14 @@ class Utils:
         last = max(int(f[-2]) if f.endswith(')') else 0 for f in files) if len(files) > 0 else -1
         return path + ('' if last == -1 else '({})'.format(str(last + 1)))
 
+    @staticmethod
+    def unicode_range(encoding: str) -> int:
+        """Returns the range of values for a unicode encoding"""
+        r = re.match(r'utf-[0-9]+', encoding)
+        if not (r is not None and None not in r.groups()):
+            return 0
+        return 1 << int(re.search(r'[0-9]+', encoding).group(0))
+
 
 class TextRNN:
     """Class that represents a recurrent neural network used for text generation/classification"""
