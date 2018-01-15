@@ -179,7 +179,7 @@ class TextRNN:
         self._name = str(name) if name is not None else None
         if name is None:
             self._name = 'unnamed_' + self.__class__.__name__ + '-' + str(self.__class__._unnamed)
-            __class__._unnamed += 1
+            self.__class__._unnamed += 1
         if self._name in self.__class__.names:
             raise ValueError('Cannot have different variables of same type with same name: {}'.format(self._name))
         self.__class__.names.add(self._name)
