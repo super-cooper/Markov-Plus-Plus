@@ -244,9 +244,9 @@ class TextCNN(TextRNN):
         # Create a filter of height 1
         filter_ = tf.get_variable(self.filter_name(), shape=[1, width, input_size, output_size])
         # Do convolution normally
-        convoluted = tf.nn.conv2d(input_layer, filter=filter_, strides=[1, 1, stride, 1], padding='SAME')
+        convolved = tf.nn.conv2d(input_layer, filter=filter_, strides=[1, 1, stride, 1], padding='SAME')
         # Return to proper shape for output layer
-        return tf.squeeze(convoluted, axis=1)
+        return tf.squeeze(convolved, axis=1)
 
     def filter_name(self) -> str:
         """Returns the standard name for a filter tensor for this TextCNN"""
