@@ -170,6 +170,7 @@ class TextRNN:
                  learning_rate=0.001,
                  neurons=20,
                  logging: bool=False, verbose=False, gm_time=False, log_file: str=None,
+                 encoding='utf-8',
                  name=None) -> None:
         """Creates an instance of an RNN
 
@@ -180,6 +181,7 @@ class TextRNN:
             verbose: Tells if updates to this neural network will be printed to the console
             gm_time: Sets logging to Greenwich meantime rather than local time
             log_file: The name of the log file for this TextRNN
+            encoding: The type of encoding for the characters used by this TextRNN
             name: The name of this neural network
         """
         self._verbose = verbose
@@ -195,6 +197,7 @@ class TextRNN:
         self._logging = logging
         self._neurons = int(neurons)
         self._log_time = time.gmtime if gm_time else time.localtime
+        self.encoding = encoding
         self.log('Initialize ' + str(self))
 
     def get_name(self) -> str:
@@ -221,7 +224,7 @@ class TextCNN(TextRNN):
     FILTER_NAME = 'filter'
     
     def __init__(self, filter_width=3, *args, **kwargs):
-        """Creates an instance of an RNN
+        """Creates an instance of a CNN
 
         Keyword Arguments:
             filter_width: The width of the filter for the network (default 3, recommended not to change this)
@@ -230,7 +233,8 @@ class TextCNN(TextRNN):
             logging: Tells if this TextCNN is to be logged to a file
             verbose: Tells if updates to this neural network will be printed to the console
             gm_time: Sets logging to Greenwich meantime rather than local time
-            log_file: The name of the log file for this TextRNN
+            log_file: The name of the log file for this TextCNN
+            encoding: The type of encoding for the characters used by this TextCNN
             name: The name of this neural network
         """
         super().__init__(*args, **kwargs)
