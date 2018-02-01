@@ -4,9 +4,14 @@ import time
 from collections import defaultdict
 from glob import glob
 from typing import Dict, List, Union
+import threading
+import sys
 
 import numpy as np
 import tensorflow as tf
+
+# Global variables
+logger = None  # Defined after definition of Utils class
 
 
 class Markov:
@@ -120,6 +125,7 @@ class MarkovChain:
 class Utils:
     """Class for Markov chain utilities"""
     _num_check = re.compile('[0-9]+((\.[0-9]+)?)')
+    INSTANCE_DELIMITER = '\n\n$||||$\n\n'
 
     @staticmethod
     def get_files(regex: str=None) -> List[str]:
@@ -152,6 +158,52 @@ class Utils:
         last = max(int(f[-2]) if f.endswith(')') else 0 for f in files) if len(files) > 0 else -1
         return path + ('' if last == -1 else '({})'.format(str(last + 1)))
 
+    class Logger:
+        """Class used for centralized logging so files are written cleanly and efficiently"""
+
+        def __init__(self, interval=60) -> None:
+            """Constructor
+
+            Keyword Arguments:
+                interval: The amount of seconds the logger will wait before the message queue is flushed to the disk
+            """
+            self.message_queue = defaultdict(list)
+            self._waiting = set()
+            self._write = False
+            self.refresh_period = interval
+            self.thread = threading.Thread(target=self.flush, args=())
+            self.thread.daemon = True
+            self.thread.name = 'Logger'
+            self.thread.start()
+
+        def log(self, message: str, file: str) -> None:
+            """Stores a log message in memory to be written to disk later"""
+            # Wait for any current writes to finish
+            while self._write:
+                continue
+            self.message_queue[file].append(message)
+            self._waiting.add(file)
+
+        def flush(self) -> None:
+            """Flushes the message queue"""
+            self._write = True
+            self._write_to_disk()
+            self._write = False
+            try:
+                time.sleep(self.refresh_period)
+            except KeyboardInterrupt:
+                print('Flushing log...')
+                self._write_to_disk()
+                sys.exit(1)
+
+        def _write_to_disk(self):
+            """Writes the contents of the queue to disk"""
+            for file in self._waiting:
+                with open(file, 'a+', encoding='utf-8') as log:
+                    log.write('\n'.join(self.message_queue[file]))
+                self.message_queue[file].clear()
+            self._waiting.clear()
+
     @staticmethod
     def unicode_range(encoding: str) -> int:
         """Returns the range of values for a unicode encoding"""
@@ -159,6 +211,15 @@ class Utils:
         if not (r is not None and None not in r.groups()):
             return 0
         return 1 << int(re.search(r'[0-9]+', encoding).group(0))
+
+
+def set_logger(new: Utils.Logger) -> Utils.Logger:
+    global logger
+    logger = new
+    return logger
+
+
+set_logger(Utils.Logger())
 
 
 class TextRNN:
@@ -198,6 +259,8 @@ class TextRNN:
         self._neurons = int(neurons)
         self._log_time = time.gmtime if gm_time else time.localtime
         self.encoding = encoding
+        global logger
+        self.logger = logger
         self.log('Initialize ' + str(self))
 
     def get_name(self) -> str:
@@ -210,8 +273,7 @@ class TextRNN:
         if self._verbose:
             print(out)
         if self._logging:
-            with open(self._log_file, 'a+', encoding='utf-8') as log:
-                log.write(out + '\n')
+            self.logger.log(out, self._log_file)
 
     def __str__(self) -> str:
         """Returns a string representation of this TextRNN object (includes pertinent information)"""
