@@ -226,6 +226,7 @@ class TextNet:
     """Class that represents a baseline neural network used for text generation/classification"""
     _unnamed = 0
     names = set()
+    he_init = tf.variance_scaling_initializer()
 
     def __init__(self,
                  learning_rate=0.001,
@@ -258,6 +259,7 @@ class TextNet:
         self.encoding = encoding
         self.x = None
         self.y = None
+        self.n_hidden = 0
         self.last_added = None
         global logger
         self.logger = logger
@@ -269,7 +271,8 @@ class TextNet:
 
     def log(self, message: str = None) -> None:
         """Logs a message or just the time if no message is provided. Covers both printing and file logging"""
-        out = time.strftime('[%a, %d %b %Y %H:%M:%S] ', self._log_time()) + message if message is not None else ''
+        out = time.strftime('[%a, %d %b %Y %H:%M:%S] ', self._log_time()) + '[' + self.get_name() + ']' \
+            + (message if message is not None else '')
         if self._verbose:
             print(out)
         if self._logging:
@@ -288,7 +291,27 @@ class TextNet:
                 self.x = tf.placeholder(input_type, shape=input_shape, name='X')
                 self.y = tf.placeholder(output_type, shape=output_shape, name='y')
         self.last_added = self.x
+        self.log('Initialize input layer')
         return self.x, self.y
+
+    def add_dense_layer(self, n_neurons, kernel_initializer=None, scope_name=None) -> tf.Tensor:
+        """Adds a dense layer to this neural network
+
+        Keyword Arguments:
+            n_neurons: The number of neurons in this layer
+            kernel_initializer: The random initializer for the layer (default He initialization)
+            scope_name: The name of the greater layer (default 'Hidden')
+        """
+        if kernel_initializer is None:
+            kernel_initializer = TextNet.he_init
+        if scope_name is None:
+            scope_name = 'Hidden' + str(self.n_hidden + 1)
+            self.n_hidden += 1
+        with tf.name_scope(self.get_name()):
+            with tf.name_scope(scope_name):
+                self.last_added = tf.layers.dense(self.last_added, n_neurons, kernel_initializer=kernel_initializer)
+        self.log('Add dense layer under name ' + scope_name)
+        return self.last_added
 
 
 class TextRNN(TextNet):
