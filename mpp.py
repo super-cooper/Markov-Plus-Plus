@@ -283,7 +283,6 @@ class TextRNN:
 
 class TextCNN(TextRNN):
     """Class to represent convolutional neural network for text generation/classification"""
-    FILTER_NAME = 'filter'
     
     def __init__(self, *args, **kwargs):
         """Creates an instance of a CNN
