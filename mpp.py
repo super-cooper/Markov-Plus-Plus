@@ -253,7 +253,7 @@ class TextNet:
         if self._name in self.__class__.names:
             raise ValueError('Cannot have different variables of same type with same name: {}'.format(self._name))
         self.__class__.names.add(self._name)
-        self._log_file = Utils.safe_path('log/' + log_file if log_file is not None else self._name + '-log')
+        self._log_file = Utils.safe_path('logs/' + log_file if log_file is not None else self._name + '-log')
         self._logging = logging
         self._log_time = time.gmtime if gm_time else time.localtime
         self.encoding = encoding
@@ -312,6 +312,8 @@ class TextNet:
                 self.last_added = tf.layers.dense(self.last_added, n_neurons, kernel_initializer=kernel_initializer)
         self.log('Add dense layer under name ' + scope_name)
         return self.last_added
+
+    def add_batch_norm_layer(self):
 
 
 class TextRNN(TextNet):
