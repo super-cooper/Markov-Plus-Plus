@@ -222,18 +222,18 @@ def set_logger(new: Utils.Logger) -> Utils.Logger:
 set_logger(Utils.Logger())
 
 
-class TextRNN:
-    """Class that represents a recurrent neural network used for text generation/classification"""
+class TextNet:
+    """Class that represents a baseline neural network used for text generation/classification"""
     _unnamed = 0
     names = set()
 
     def __init__(self,
                  learning_rate=0.001,
                  neurons=20,
-                 logging: bool=False, verbose=False, gm_time=False, log_file: str=None,
+                 logging: bool = False, verbose=False, gm_time=False, log_file: str = None,
                  encoding='utf-8',
                  name=None) -> None:
-        """Creates an instance of an RNN
+        """Creates an instance of an Text Neural Network
 
         Keyword Arguments:
             learning_rate: The learning rate of this RNN (default 0.001)
@@ -267,7 +267,7 @@ class TextRNN:
         """Returns the generic name of this RNN"""
         return self._name
 
-    def log(self, message: str=None) -> None:
+    def log(self, message: str = None) -> None:
         """Logs a message or just the time if no message is provided. Covers both printing and file logging"""
         out = time.strftime('[%a, %d %b %Y %H:%M:%S] ', self._log_time()) + message if message is not None else ''
         if self._verbose:
@@ -281,14 +281,32 @@ class TextRNN:
             self._name, self._neurons, self._learning_rate)
 
 
-class TextCNN(TextRNN):
+class TextRNN(TextNet):
+    """Class that represents a recurrent neural network used for text generation/classification"""
+
+    def __init__(self, *args, **kwargs) -> None:
+        """Creates an instance of a CNN
+
+                Keyword Arguments:
+                    learning_rate: The learning rate of this CNN (default 0.001)
+                    neurons: The number of neurons for the input layer (default 20)
+                    logging: Tells if this TextCNN is to be logged to a file
+                    verbose: Tells if updates to this neural network will be printed to the console
+                    gm_time: Sets logging to Greenwich meantime rather than local time
+                    log_file: The name of the log file for this TextCNN
+                    encoding: The type of encoding for the characters used by this TextCNN
+                    name: The name of this neural network
+                """
+        super().__init__(*args, **kwargs)
+
+
+class TextCNN(TextNet):
     """Class to represent convolutional neural network for text generation/classification"""
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         """Creates an instance of a CNN
 
         Keyword Arguments:
-            filter_width: The width of the filter for the network (default 3, recommended not to change this)
             learning_rate: The learning rate of this CNN (default 0.001)
             neurons: The number of neurons for the input layer (default 20)
             logging: Tells if this TextCNN is to be logged to a file
@@ -298,4 +316,25 @@ class TextCNN(TextRNN):
             encoding: The type of encoding for the characters used by this TextCNN
             name: The name of this neural network
         """
+        super().__init__(*args, **kwargs)
+
+
+class TextGAN(TextNet):
+    """Class to represent a Generative Adversarial Network specifically modeled for generating text"""
+
+    def __init__(self, generator: TextNet, discriminator: TextNet, *args, **kwargs) -> None:
+        """Creates an instance of a GAN
+
+                Keyword Arguments:
+                    learning_rate: The learning rate of this CNN (default 0.001)
+                    neurons: The number of neurons for the input layer (default 20)
+                    logging: Tells if this TextCNN is to be logged to a file
+                    verbose: Tells if updates to this neural network will be printed to the console
+                    gm_time: Sets logging to Greenwich meantime rather than local time
+                    log_file: The name of the log file for this TextCNN
+                    encoding: The type of encoding for the characters used by this TextCNN
+                    name: The name of this neural network
+                """
+        self.generator = generator
+        self.discriminator = discriminator
         super().__init__(*args, **kwargs)
