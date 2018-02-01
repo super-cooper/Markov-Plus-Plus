@@ -285,7 +285,7 @@ class TextCNN(TextRNN):
     """Class to represent convolutional neural network for text generation/classification"""
     FILTER_NAME = 'filter'
     
-    def __init__(self, filter_width=3, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """Creates an instance of a CNN
 
         Keyword Arguments:
@@ -300,28 +300,3 @@ class TextCNN(TextRNN):
             name: The name of this neural network
         """
         super().__init__(*args, **kwargs)
-        self.filter_width = filter_width
-
-    def squash_text(self, input_layer: tf.Tensor, output_size: int, width: int, stride: int=1) -> tf.Tensor:
-        """Squashes the text into a '1D Image' to be used for convolution
-
-        Arguments:
-            input_layer: A Tensor with shape [batch_size, max_length, embedding_size] containing input data
-            output_size: The number of feature maps
-            width: The width of the filter
-            stride: Number of chars the filter will stride over (default 1, recommended not to change this)
-        """
-        # This is basically the number of channels for the input
-        input_size = input_layer.get_shape()[-1]
-        # Here we change the shape to [batch_size, 1, max_length, output_size]
-        input_layer = tf.expand_dims(input_layer, axis=1)
-        # Create a filter of height 1
-        filter_ = tf.get_variable(self.filter_name(), shape=[1, width, input_size, output_size])
-        # Do convolution normally
-        convolved = tf.nn.conv2d(input_layer, filter=filter_, strides=[1, 1, stride, 1], padding='SAME')
-        # Return to proper shape for output layer
-        return tf.squeeze(convolved, axis=1)
-
-    def filter_name(self) -> str:
-        """Returns the standard name for a filter tensor for this TextCNN"""
-        return self._name + '-' + TextCNN.FILTER_NAME
