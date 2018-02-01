@@ -1,11 +1,11 @@
 import os
 import re
+import sys
+import threading
 import time
 from collections import defaultdict
 from glob import glob
-from typing import Dict, List, Union
-import threading
-import sys
+from typing import Dict, List, Union, Tuple
 
 import numpy as np
 import tensorflow as tf
@@ -229,7 +229,6 @@ class TextNet:
 
     def __init__(self,
                  learning_rate=0.001,
-                 neurons=20,
                  logging: bool = False, verbose=False, gm_time=False, log_file: str = None,
                  encoding='utf-8',
                  name=None) -> None:
@@ -237,11 +236,10 @@ class TextNet:
 
         Keyword Arguments:
             learning_rate: The learning rate of this RNN (default 0.001)
-            neurons: The number of neurons for the input layer (default 20)
-            logging: Tells if this TextRNN is to be logged to a file
+            logging: Tells if this TextNet is to be logged to a file
             verbose: Tells if updates to this neural network will be printed to the console
             gm_time: Sets logging to Greenwich meantime rather than local time
-            log_file: The name of the log file for this TextRNN
+            log_file: The name of the log file for this TextNet
             encoding: The type of encoding for the characters used by this TextRNN
             name: The name of this neural network
         """
@@ -256,9 +254,11 @@ class TextNet:
         self.__class__.names.add(self._name)
         self._log_file = Utils.safe_path('log/' + log_file if log_file is not None else self._name + '-log')
         self._logging = logging
-        self._neurons = int(neurons)
         self._log_time = time.gmtime if gm_time else time.localtime
         self.encoding = encoding
+        self.x = None
+        self.y = None
+        self.last_added = None
         global logger
         self.logger = logger
         self.log('Initialize ' + str(self))
@@ -277,8 +277,18 @@ class TextNet:
 
     def __str__(self) -> str:
         """Returns a string representation of this TextRNN object (includes pertinent information)"""
-        return self.__class__.__name__ + '(name={}, neurons={}, learning_rate={}'.format(
-            self._name, self._neurons, self._learning_rate)
+        return self.__class__.__name__ + '(name={}, learning_rate={}'.format(
+            self._name, self._learning_rate)
+
+    def add_input_layer(self, input_type=tf.float32, input_shape=None,
+                        output_type=tf.float32, output_shape=None) -> Tuple[tf.Tensor, tf.Tensor]:
+        """Adds an input layer to this network's architecture"""
+        with tf.name_scope(self.get_name()):
+            with tf.name_scope('Input'):
+                self.x = tf.placeholder(input_type, shape=input_shape, name='X')
+                self.y = tf.placeholder(output_type, shape=output_shape, name='y')
+        self.last_added = self.x
+        return self.x, self.y
 
 
 class TextRNN(TextNet):
@@ -289,12 +299,11 @@ class TextRNN(TextNet):
 
                 Keyword Arguments:
                     learning_rate: The learning rate of this CNN (default 0.001)
-                    neurons: The number of neurons for the input layer (default 20)
                     logging: Tells if this TextCNN is to be logged to a file
                     verbose: Tells if updates to this neural network will be printed to the console
                     gm_time: Sets logging to Greenwich meantime rather than local time
-                    log_file: The name of the log file for this TextCNN
-                    encoding: The type of encoding for the characters used by this TextCNN
+                    log_file: The name of the log file for this TextRNN
+                    encoding: The type of encoding for the characters used by this TextRNN
                     name: The name of this neural network
                 """
         super().__init__(*args, **kwargs)
@@ -308,7 +317,6 @@ class TextCNN(TextNet):
 
         Keyword Arguments:
             learning_rate: The learning rate of this CNN (default 0.001)
-            neurons: The number of neurons for the input layer (default 20)
             logging: Tells if this TextCNN is to be logged to a file
             verbose: Tells if updates to this neural network will be printed to the console
             gm_time: Sets logging to Greenwich meantime rather than local time
@@ -326,13 +334,12 @@ class TextGAN(TextNet):
         """Creates an instance of a GAN
 
                 Keyword Arguments:
-                    learning_rate: The learning rate of this CNN (default 0.001)
-                    neurons: The number of neurons for the input layer (default 20)
-                    logging: Tells if this TextCNN is to be logged to a file
+                    learning_rate: The learning rate of this GAN (default 0.001)
+                    logging: Tells if this TextGAN is to be logged to a file
                     verbose: Tells if updates to this neural network will be printed to the console
                     gm_time: Sets logging to Greenwich meantime rather than local time
-                    log_file: The name of the log file for this TextCNN
-                    encoding: The type of encoding for the characters used by this TextCNN
+                    log_file: The name of the log file for this TextGAN
+                    encoding: The type of encoding for the characters used by this TextGAN
                     name: The name of this neural network
                 """
         self.generator = generator
