@@ -227,6 +227,7 @@ class TextNet:
     _unnamed = 0
     names = set()
     he_init = tf.variance_scaling_initializer()
+    EXTERNAL = 'External'
 
     def __init__(self,
                  learning_rate=0.001,
@@ -259,8 +260,9 @@ class TextNet:
         self.encoding = encoding
         self.x = None
         self.y = None
-        self.n_hidden = 0
         self.last_added = None
+        with tf.name_scope(TextNet.EXTERNAL):
+            self.training = tf.placeholder_with_default(False, shape=(), name='is_training')
         global logger
         self.logger = logger
         self.log('Initialize ' + str(self))
@@ -294,7 +296,7 @@ class TextNet:
         self.log('Initialize input layer')
         return self.x, self.y
 
-    def add_dense_layer(self, n_neurons, kernel_initializer=None, scope_name=None) -> tf.Tensor:
+    def add_dense_layer(self, n_neurons, kernel_initializer=None, scope_name=None, *args, **kwargs) -> tf.Tensor:
         """Adds a dense layer to this neural network
 
         Keyword Arguments:
@@ -305,15 +307,24 @@ class TextNet:
         if kernel_initializer is None:
             kernel_initializer = TextNet.he_init
         if scope_name is None:
-            scope_name = 'Hidden' + str(self.n_hidden + 1)
-            self.n_hidden += 1
+            scope_name = 'Hidden'
         with tf.name_scope(self.get_name()):
             with tf.name_scope(scope_name):
-                self.last_added = tf.layers.dense(self.last_added, n_neurons, kernel_initializer=kernel_initializer)
+                self.last_added = tf.layers.dense(self.last_added, n_neurons, kernel_initializer=kernel_initializer,
+                                                  name='Fully_Connected', *args, **kwargs)
         self.log('Add dense layer under name ' + scope_name)
         return self.last_added
 
-    def add_batch_norm_layer(self):
+    def add_batch_norm_layer(self, scope_name=None, *args, **kwargs) -> tf.Tensor:
+        """Add a batch normalization layer to the model"""
+        if scope_name is None:
+            scope_name = 'Hidden'
+        with tf.name_scope(self.get_name()):
+            with tf.name_scope(scope_name):
+                self.last_added = tf.layers.batch_normalization(self.last_added, training=self.training,
+                                                                *args, **kwargs)
+        self.log('Add batch normalization layer under name ' + scope_name)
+        return self.last_added
 
 
 class TextRNN(TextNet):
