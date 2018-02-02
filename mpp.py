@@ -290,7 +290,8 @@ class TextNet:
         if self._logging[Utils.Logger.categories.MODEL] or self._logging[Utils.Logger.categories.EVAL]:
             self.logger.add_file_writer(
                 self.get_name(),
-                tf.summary.FileWriter(Utils.safe_path('logs/TensorBoard/' + self.get_name()), tf.get_default_graph()))
+                tf.summary.FileWriter(Utils.safe_path('logs/TensorBoard/' + self.get_name(), is_dir=True),
+                                      tf.get_default_graph()))
         self.log('Initialize ' + str(self))
 
     def get_name(self) -> str:
