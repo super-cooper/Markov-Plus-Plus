@@ -1,7 +1,6 @@
 import os
 import re
-import sys
-import threading
+import signal
 import time
 from collections import defaultdict, namedtuple
 from glob import glob
@@ -154,31 +153,29 @@ class Utils:
         """Creates a version of the path such that no files/directories will be overwritten"""
         possible = re.compile(r'^' + path + r'(\([0-9]+\))?$')
         # Get a list of all files/dirs in the cwd depending on whether or not is_dir is true
-        files = [f for f in glob(path + '*') if possible.match(f) is not None and (is_dir == os.path.isdir(f))]
+        files = [f for f in glob(path + '*') if possible.match(f.replace('\\', '/')) is not None and
+                 (is_dir == os.path.isdir(f))]
         last = max(int(f[-2]) if f.endswith(')') else 0 for f in files) if len(files) > 0 else -1
         return path + ('' if last == -1 else '({})'.format(str(last + 1)))
 
     class Logger:
         """Class used for centralized logging so files are written cleanly and efficiently"""
-        _log_types = ['ARCHITECTURE', 'LOSS', 'EVAL', 'MODEL', 'MISC', 'GLOBAL']
+        # TODO Have this work asynchronously in the background
+        _log_types = ['ARCHITECTURE', 'LOSS', 'EVAL', 'MODEL', 'STEPS', 'GLOBAL']
         categories = namedtuple('LogTypes', _log_types)._make(_log_types)
 
-        def __init__(self, interval=60) -> None:
+        def __init__(self, capacity=50) -> None:
             """Constructor
 
             Keyword Arguments:
-                interval: The amount of seconds the logger will wait before the message queue is flushed to the disk
+                capacity: The amount of messages the logger will amass before writing to disk
             """
             self.message_queue = defaultdict(list)
+            self.capacity = capacity
             self._waiting = set()
             self._write = False
             self.summaries = defaultdict(list)
             self.writers = {}
-            self.refresh_period = interval
-            self.thread = threading.Thread(target=self.flush, args=())
-            self.thread.daemon = True
-            self.thread.name = 'Logger'
-            self.thread.start()
 
         def log(self, message: str, file: str) -> None:
             """Stores a log message in memory to be written to disk later"""
@@ -187,18 +184,14 @@ class Utils:
                 continue
             self.message_queue[file].append(message)
             self._waiting.add(file)
+            if len(self.message_queue) > self.capacity:
+                self.flush()
 
         def flush(self) -> None:
             """Flushes the message queue"""
             self._write = True
             self._write_to_disk()
             self._write = False
-            try:
-                time.sleep(self.refresh_period)
-            except KeyboardInterrupt:
-                print('Flushing log...')
-                self._write_to_disk()
-                sys.exit(1)
 
         def _write_to_disk(self):
             """Writes the contents of the queue to disk"""
@@ -243,7 +236,7 @@ class TextNet:
 
     def __init__(self,
                  learning_rate=0.001,
-                 logging: bool = False,
+                 logging=False,
                  verbose=False, gm_time=False,
                  log_file: str = None,
                  exclude: Iterable[str]=(),
@@ -262,6 +255,8 @@ class TextNet:
             name: The name of this neural network
         """
         self._verbose = verbose
+        if not verbose:
+            os.environ['TF_CPP_MIN_LOG_LEVEL'] = 2
         self._learning_rate = float(learning_rate)
         self._name = str(name) if name is not None else None
         if name is None:
@@ -270,7 +265,7 @@ class TextNet:
         if self._name in self.__class__.names:
             raise ValueError('Cannot have different variables of same type with same name: {}'.format(self._name))
         self.__class__.names.add(self._name)
-        self._log_file = Utils.safe_path('logs/' + log_file if log_file is not None else self._name + '-log')
+        self._log_file = Utils.safe_path('logs/' + (log_file if log_file is not None else self._name) + '-log')
         self._logging = {_type: (_type not in exclude) for _type in Utils.Logger.categories}
         self._logging[Utils.Logger.categories.GLOBAL] = logging
         self._log_time = time.gmtime if gm_time else time.localtime
@@ -284,6 +279,7 @@ class TextNet:
         self.update_ops = []
         with tf.name_scope(TextNet.EXTERNAL):
             self.is_training = tf.placeholder_with_default(False, shape=(), name='is_training')
+        self.scope = tf.name_scope(self.get_name())
         self._closed = False
         global logger
         self.logger = logger
@@ -316,10 +312,9 @@ class TextNet:
                         output_type=tf.float32, output_shape=None) -> Tuple[tf.Tensor, tf.Tensor]:
         """Adds an input layer to this network's architecture"""
         self._check_closed()
-        with tf.name_scope(self.get_name()):
-            with tf.name_scope('Input'):
-                self.X = tf.placeholder(input_type, shape=input_shape, name='X')
-                self.y = tf.placeholder(output_type, shape=output_shape, name='y')
+        with tf.name_scope(self.get_name() + '/Input'):
+            self.X = tf.placeholder(input_type, shape=input_shape, name='X')
+            self.y = tf.placeholder(output_type, shape=output_shape, name='y')
         self.last_added = self.X
         self.log('Initialize input layer', Utils.Logger.categories.ARCHITECTURE)
         return self.X, self.y
@@ -335,10 +330,9 @@ class TextNet:
         self._check_closed()
         if kernel_initializer is None:
             kernel_initializer = TextNet.he_init
-        with tf.name_scope(self.get_name()):
-            with tf.name_scope(scope_name):
-                self.last_added = tf.layers.dense(self.last_added, n_neurons, kernel_initializer=kernel_initializer,
-                                                  name='Fully_Connected', *args, **kwargs)
+        with tf.name_scope(self.get_name() + '/' + scope_name):
+            self.last_added = tf.layers.dense(self.last_added, n_neurons, kernel_initializer=kernel_initializer,
+                                              *args, **kwargs)
         self.log('Add dense layer under name ' + scope_name, Utils.Logger.categories.ARCHITECTURE)
         return self.last_added
 
@@ -346,37 +340,34 @@ class TextNet:
         """Add a batch normalization layer to the model"""
         self._check_closed()
         self.update_ops.append(tf.get_collection(tf.GraphKeys.UPDATE_OPS))
-        with tf.name_scope(self.get_name()):
-            with tf.name_scope(scope_name):
-                self.last_added = tf.layers.batch_normalization(self.last_added, training=self.is_training,
-                                                                name='Batch_Norm', *args, **kwargs)
+        with tf.name_scope(self.get_name() + '/' + scope_name):
+            self.last_added = tf.layers.batch_normalization(self.last_added, training=self.is_training,
+                                                            *args, **kwargs)
         self.log('Add batch normalization layer under name ' + scope_name, Utils.Logger.categories.ARCHITECTURE)
         return self.last_added
 
     def activate(self, activate=tf.nn.selu, scope_name='', *args, **kwargs) -> tf.Tensor:
         """Adds an activation function to the most recently added layer"""
         self._check_closed()
-        with tf.name_scope(self.get_name()):
-            with tf.name_scope(scope_name):
-                self.last_added = activate(self.last_added, *args, **kwargs)
+        with tf.name_scope(self.get_name() + '/' + scope_name):
+            self.last_added = activate(self.last_added, *args, **kwargs)
         self.log('Activate {} with {}'.format(scope_name, activate.__name__), Utils.Logger.categories.ARCHITECTURE)
         return self.last_added
 
-    def close(self, loss_fn=tf.reduce_mean, error_fn=tf.nn.sparse_softmax_cross_entropy_with_logits, multiplier=1,
+    def close(self, loss_fn=tf.reduce_mean, error_fn=tf.nn.sparse_softmax_cross_entropy_with_logits,
               *args, **kwargs) -> tf.Tensor:
         """Closes the network and returns the loss op Tensor. args and kwargs will be passed directly to error_fn"""
         self._closed = True
-        with tf.name_scope(self.get_name()):
-            self.loss = multiplier * loss_fn(error_fn(*args, **kwargs), name='loss')
-            if self._logging[Utils.Logger.categories.LOSS]:
-                self.logger.add_summary(Utils.Logger.categories.LOSS, tf.summary.scalar('loss', self.loss))
+        self.loss = loss_fn(error_fn(*args, **kwargs), name='loss')
+        if self._logging[Utils.Logger.categories.LOSS]:
+            self.logger.add_summary(self.get_name(), tf.summary.scalar('loss', self.loss))
         self.log('Close model with {}({})'.format(loss_fn.__name__, error_fn.__name__),
                  Utils.Logger.categories.ARCHITECTURE)
         return self.loss
 
     def define_training_routine(self, optimizer=tf.train.AdamOptimizer, *args, **kwargs) -> tf.Tensor:
         """Defines the training routine based on what type of optimizer to be used (default AdamOptimizer)"""
-        with tf.name_scope('Train'):
+        with tf.name_scope(self.get_name() + '/Train'):
             self.training_op = optimizer(learning_rate=self._learning_rate, *args, **kwargs).minimize(self.loss)
         self.log('Define training routine as {} with learning_rate {}'.format(optimizer.__name__, self._learning_rate),
                  Utils.Logger.categories.ARCHITECTURE)
@@ -386,25 +377,26 @@ class TextNet:
         """Adds an accuracy evaluation op to the end of the network. Default logits are the last-added layer"""
         if logits is None:
             logits = self.last_added
-        with tf.name_scope(self.get_name()):
-            with tf.name_scope('Evaluate'):
-                self.accuracy = tf.reduce_mean(tf.cast(tf.nn.in_top_k(logits, self.y, top_k), tf.float32),
-                                               name='accuracy_top{}'.format(top_k))
-                if self._logging[Utils.Logger.categories.EVAL]:
-                    self.logger.add_summary('accuracy', tf.summary.scalar('accuracy', self.accuracy))
-                    self.log('Add accuracy summary')
+        with tf.name_scope(self.get_name() + '/Evaluate'):
+            self.accuracy = tf.reduce_mean(tf.cast(tf.nn.in_top_k(logits, self.y, top_k), tf.float32),
+                                           name='accuracy_top{}'.format(top_k))
+            if self._logging[Utils.Logger.categories.EVAL]:
+                self.logger.add_summary(self.get_name(), tf.summary.scalar('accuracy', self.accuracy))
+                self.log('Add accuracy summary')
         return self.accuracy
 
-    def checkpoint(self, epoch: int, sess: tf.Session, feed_dict: dict) -> None:
+    def checkpoint(self, epoch: int, sess: tf.Session, ops: list, feed_dict: dict) -> None:
         """Logs a checkpoint in training for this neural network. A tf.Session must be active for this method to work"""
-        evals = self.logger.summaries[self._name]
+        evals = self.logger.summaries[self._name] + ops
         writer = self.logger.writers[self._name]
         results = sess.run(evals, feed_dict=feed_dict)
         for r, tensor in zip(results, evals):
-            if isinstance(r, (float, int)):
-                self.log('Epoch {} {}: {}'.format(epoch, tensor.name, r), Utils.Logger.categories.STEPS)
+            if tensor not in ops:
+                writer.add_summary(r, epoch)
             else:
-                writer.add_summary(results, epoch)
+                root = tensor.name.rfind('/') + 1
+                name = tensor.name[root if root > 0 else 0:tensor.name.rfind(':')]
+                self.log('Epoch {} {}: {}'.format(epoch, name, r), Utils.Logger.categories.STEPS)
 
     def step(self, sess: tf.Session, feed_dict: dict):
         """Runs one step of training. sess must be an active TensorFlow Session in order for this to work"""
