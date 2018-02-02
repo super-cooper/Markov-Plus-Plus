@@ -422,6 +422,29 @@ class TextRNN(TextNet):
                 """
         super().__init__(*args, **kwargs)
 
+    def add_recurrent_layers(self,
+                             n_neurons,
+                             n_layers,
+                             cell_type=tf.nn.rnn_cell.LSTMCell,
+                             dropout_keep_prob=0.5,
+                             *args, **kwargs) -> tf.Tensor:
+        """Adds recurrent layers of the RNN using a specific cell architecture
+
+        Keyword Arguments:
+            n_neurons: The number of neurons per layer
+            n_layers: The number of hidden layers
+            cell_type: The type of cell to use in the hidden layers (default LSTM)
+            dropout_keep_prob: The probability of a neuron staying active after dropout (default 0.5)
+            args and kwargs go to the cell constructor
+        """
+        self._check_closed()
+        cells = [cell_type(n_neurons, *args, **kwargs) for _ in range(n_layers)]
+        cells_drop = [tf.nn.rnn_cell.DropoutWrapper(cell, input_keep_prob=dropout_keep_prob) for cell in cells]
+        multi_layer_cell = tf.contrib.rnn.MultiRNNCell(cells_drop)
+        outputs, states = tf.nn.dynamic_rnn(multi_layer_cell, self.X, self.y.dtype)
+        self.last_added = states[-1][1]
+        return self.last_added
+
 
 class TextCNN(TextNet):
     """Class to represent convolutional neural network for text generation/classification"""
