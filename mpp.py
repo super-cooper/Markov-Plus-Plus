@@ -379,6 +379,12 @@ class TextNet:
             self.log('Add accuracy summary')
         return self.accuracy
 
+    def add_eval_text(self, tensor: tf.Tensor) -> tf.Tensor:
+        """Adds a textual evaluation summary to the model"""
+        summary = self.logger.add_summary(self.get_name(), tensor)
+        self.log('Add text summary')
+        return summary
+
     def checkpoint(self, epoch: int, sess: tf.Session, ops: list, feed_dict: dict) -> None:
         """Logs a checkpoint in training for this neural network. A tf.Session must be active for this method to work"""
         evals = self.logger.summaries[self._name] + ops
