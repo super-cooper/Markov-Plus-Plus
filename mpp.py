@@ -154,13 +154,13 @@ class Utils:
         """Creates a version of the path such that no files/directories will be overwritten"""
         possible = re.compile(r'^' + path + r'(\([0-9]+\))?$')
         # Get a list of all files/dirs in the cwd depending on whether or not is_dir is true
-        files = [f for f in glob('*') if possible.match(f) is not None and (is_dir == os.path.isdir(f))]
+        files = [f for f in glob(path + '*') if possible.match(f) is not None and (is_dir == os.path.isdir(f))]
         last = max(int(f[-2]) if f.endswith(')') else 0 for f in files) if len(files) > 0 else -1
         return path + ('' if last == -1 else '({})'.format(str(last + 1)))
 
     class Logger:
         """Class used for centralized logging so files are written cleanly and efficiently"""
-        _log_types = ['ARCHITECTURE', 'LOSS', 'EVAL', 'MISC', 'GLOBAL']
+        _log_types = ['ARCHITECTURE', 'LOSS', 'EVAL', 'MODEL', 'MISC', 'GLOBAL']
         categories = namedtuple('LogTypes', _log_types)._make(_log_types)
 
         def __init__(self, interval=60) -> None:
@@ -172,7 +172,8 @@ class Utils:
             self.message_queue = defaultdict(list)
             self._waiting = set()
             self._write = False
-            self.summaries = {}
+            self.summaries = defaultdict(list)
+            self.writers = {}
             self.refresh_period = interval
             self.thread = threading.Thread(target=self.flush, args=())
             self.thread.daemon = True
@@ -207,9 +208,13 @@ class Utils:
                 self.message_queue[file].clear()
             self._waiting.clear()
 
-        def add_summary(self, category: str, tracking: tf.Tensor) -> None:
+        def add_summary(self, model: str, tracking: tf.Tensor) -> None:
             """Adds a summary op to the logger"""
-            self.summaries[category] = tracking
+            self.summaries[model].append(tracking)
+
+        def add_file_writer(self, name: str, writer: tf.summary.FileWriter) -> None:
+            """Adds a FileWriter that keeps track of a model with name <name>"""
+            self.writers[name] = writer
 
     @staticmethod
     def unicode_range(encoding: str) -> int:
@@ -276,11 +281,16 @@ class TextNet:
         self.loss = None
         self.training_op = None
         self.accuracy = None
+        self.update_ops = []
         with tf.name_scope(TextNet.EXTERNAL):
             self.is_training = tf.placeholder_with_default(False, shape=(), name='is_training')
         self._closed = False
         global logger
         self.logger = logger
+        if self._logging[Utils.Logger.categories.MODEL] or self._logging[Utils.Logger.categories.EVAL]:
+            self.logger.add_file_writer(
+                self.get_name(),
+                tf.summary.FileWriter(Utils.safe_path('logs/TensorBoard/' + self.get_name()), tf.get_default_graph()))
         self.log('Initialize ' + str(self))
 
     def get_name(self) -> str:
@@ -334,6 +344,7 @@ class TextNet:
     def add_batch_norm_layer(self, scope_name='', *args, **kwargs) -> tf.Tensor:
         """Add a batch normalization layer to the model"""
         self._check_closed()
+        self.update_ops.append(tf.get_collection(tf.GraphKeys.UPDATE_OPS))
         with tf.name_scope(self.get_name()):
             with tf.name_scope(scope_name):
                 self.last_added = tf.layers.batch_normalization(self.last_added, training=self.is_training,
