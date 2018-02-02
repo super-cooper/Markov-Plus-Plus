@@ -160,7 +160,7 @@ class Utils:
 
     class Logger:
         """Class used for centralized logging so files are written cleanly and efficiently"""
-        _log_types = ['ARCHITECTURE', 'LOSS', 'MISC', 'GLOBAL']
+        _log_types = ['ARCHITECTURE', 'LOSS', 'EVAL', 'MISC', 'GLOBAL']
         categories = namedtuple('LogTypes', _log_types)._make(_log_types)
 
         def __init__(self, interval=60) -> None:
@@ -274,6 +274,7 @@ class TextNet:
         self.y = None
         self.last_added = None
         self.loss = None
+        self.accuracy = None
         with tf.name_scope(TextNet.EXTERNAL):
             self.training = tf.placeholder_with_default(False, shape=(), name='is_training')
         self._closed = False
@@ -350,14 +351,25 @@ class TextNet:
 
     def close(self, loss_fn=tf.reduce_mean, error_fn=tf.nn.sparse_softmax_cross_entropy_with_logits, *args, **kwargs) \
             -> tf.Tensor:
-        """Closes the network and returns the loss op Tensor"""
+        """Closes the network and returns the loss op Tensor. args and kwargs will be passed directly to error_fn"""
         self._closed = True
         with tf.name_scope(self.get_name()):
             self.loss = loss_fn(error_fn(*args, **kwargs), name='loss')
             if self._logging[Utils.Logger.categories.LOSS]:
                 self.logger.add_summary(Utils.Logger.categories.LOSS, tf.summary.scalar('loss', self.loss))
-
         return self.loss
+
+    def add_eval_accuracy(self, logits=None, top_k=1) -> tf.Tensor:
+        """Adds an accuracy evaluation op to the end of the network. Default logits are the last-added layer"""
+        if logits is None:
+            logits = self.last_added
+        with tf.name_scope(self.get_name()):
+            with tf.name_scope('eval'):
+                self.accuracy = tf.reduce_mean(tf.cast(tf.nn.in_top_k(logits, self.y, top_k), tf.float32),
+                                               name='accuracy_top{}'.format(top_k))
+                if self._logging[Utils.Logger.categories.EVAL]:
+                    self.logger.add_summary('accuracy', tf.summary.scalar('accuracy', self.accuracy))
+        return self.accuracy
 
     def _check_closed(self) -> bool:
         """Checks to see if the architecture is done being set up; throws an exception if it is"""
