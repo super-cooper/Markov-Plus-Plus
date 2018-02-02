@@ -298,7 +298,7 @@ class TextNet:
         """Returns the generic name of this RNN"""
         return self._name
 
-    def log(self, message: str = None, category: str=None) -> None:
+    def log(self, message: str = None, category: str=Utils.Logger.categories.GLOBAL) -> None:
         """Logs a message or just the time if no message is provided. Covers both printing and file logging"""
         out = time.strftime('[%a, %d %b %Y %H:%M:%S] ', self._log_time()) + '[' + self.get_name() + '] ' \
             + (message if message is not None else '')
