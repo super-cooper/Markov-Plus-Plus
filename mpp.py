@@ -406,10 +406,10 @@ class TextNet:
             else:
                 writer.add_summary(results, epoch)
 
-    def step(self, sess: tf.Session, feed_dict: dict, ops: list):
+    def step(self, sess: tf.Session, feed_dict: dict):
         """Runs one step of training. sess must be an active TensorFlow Session in order for this to work"""
         feed_dict[self.is_training] = True
-        ops += self.update_ops
+        ops = self.update_ops + [self.training_op]
         return sess.run(ops, feed_dict)
 
     def _check_closed(self) -> bool:
