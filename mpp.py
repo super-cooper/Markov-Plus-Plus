@@ -1,6 +1,5 @@
 import os
 import re
-import signal
 import time
 from collections import defaultdict, namedtuple
 from glob import glob
@@ -276,7 +275,6 @@ class TextNet:
         self.loss = None
         self.training_op = None
         self.accuracy = None
-        self.update_ops = []
         with tf.name_scope(TextNet.EXTERNAL):
             self.is_training = tf.placeholder_with_default(False, shape=(), name='is_training')
         self._closed = False
@@ -331,7 +329,6 @@ class TextNet:
     def add_batch_norm_layer(self, scope_name='', *args, **kwargs) -> tf.Tensor:
         """Add a batch normalization layer to the model"""
         self._check_closed()
-        self.update_ops.append(tf.get_collection(tf.GraphKeys.UPDATE_OPS))
         self.last_added = tf.layers.batch_normalization(self.last_added, training=self.is_training,
                                                         *args, **kwargs)
         self.log('Add batch normalization layer under name ' + scope_name, Utils.Logger.categories.ARCHITECTURE)
@@ -398,7 +395,7 @@ class TextNet:
     def step(self, sess: tf.Session, feed_dict: dict):
         """Runs one step of training. sess must be an active TensorFlow Session in order for this to work"""
         feed_dict[self.is_training] = True
-        ops = self.update_ops + [self.training_op]
+        ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS) + [self.training_op]
         return sess.run(ops, feed_dict)
 
     def _check_closed(self) -> bool:
