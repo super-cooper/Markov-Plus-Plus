@@ -279,15 +279,9 @@ class TextNet:
         self.update_ops = []
         with tf.name_scope(TextNet.EXTERNAL):
             self.is_training = tf.placeholder_with_default(False, shape=(), name='is_training')
-        self.scope = tf.name_scope(self.get_name())
         self._closed = False
         global logger
         self.logger = logger
-        if self._logging[Utils.Logger.categories.MODEL] or self._logging[Utils.Logger.categories.EVAL]:
-            self.logger.add_file_writer(
-                self.get_name(),
-                tf.summary.FileWriter(Utils.safe_path('logs/TensorBoard/' + self.get_name(), is_dir=True),
-                                      tf.get_default_graph()))
         self.log('Initialize ' + str(self))
 
     def get_name(self) -> str:
@@ -312,9 +306,8 @@ class TextNet:
                         output_type=tf.float32, output_shape=None) -> Tuple[tf.Tensor, tf.Tensor]:
         """Adds an input layer to this network's architecture"""
         self._check_closed()
-        with tf.name_scope(self.get_name() + '/Input'):
-            self.X = tf.placeholder(input_type, shape=input_shape, name='X')
-            self.y = tf.placeholder(output_type, shape=output_shape, name='y')
+        self.X = tf.placeholder(input_type, shape=input_shape, name='X')
+        self.y = tf.placeholder(output_type, shape=output_shape, name='y')
         self.last_added = self.X
         self.log('Initialize input layer', Utils.Logger.categories.ARCHITECTURE)
         return self.X, self.y
@@ -330,9 +323,8 @@ class TextNet:
         self._check_closed()
         if kernel_initializer is None:
             kernel_initializer = TextNet.he_init
-        with tf.name_scope(self.get_name() + '/' + scope_name):
-            self.last_added = tf.layers.dense(self.last_added, n_neurons, kernel_initializer=kernel_initializer,
-                                              *args, **kwargs)
+        self.last_added = tf.layers.dense(self.last_added, n_neurons, kernel_initializer=kernel_initializer,
+                                          *args, **kwargs)
         self.log('Add dense layer under name ' + scope_name, Utils.Logger.categories.ARCHITECTURE)
         return self.last_added
 
@@ -340,17 +332,15 @@ class TextNet:
         """Add a batch normalization layer to the model"""
         self._check_closed()
         self.update_ops.append(tf.get_collection(tf.GraphKeys.UPDATE_OPS))
-        with tf.name_scope(self.get_name() + '/' + scope_name):
-            self.last_added = tf.layers.batch_normalization(self.last_added, training=self.is_training,
-                                                            *args, **kwargs)
+        self.last_added = tf.layers.batch_normalization(self.last_added, training=self.is_training,
+                                                        *args, **kwargs)
         self.log('Add batch normalization layer under name ' + scope_name, Utils.Logger.categories.ARCHITECTURE)
         return self.last_added
 
     def activate(self, activate=tf.nn.selu, scope_name='', *args, **kwargs) -> tf.Tensor:
         """Adds an activation function to the most recently added layer"""
         self._check_closed()
-        with tf.name_scope(self.get_name() + '/' + scope_name):
-            self.last_added = activate(self.last_added, *args, **kwargs)
+        self.last_added = activate(self.last_added, *args, **kwargs)
         self.log('Activate {} with {}'.format(scope_name, activate.__name__), Utils.Logger.categories.ARCHITECTURE)
         return self.last_added
 
@@ -365,10 +355,18 @@ class TextNet:
                  Utils.Logger.categories.ARCHITECTURE)
         return self.loss
 
+    def init(self) -> None:
+        """Initializes the model for computation. There must be an active TensorFlow Session for this to work"""
+        tf.global_variables_initializer().run()
+        if self._logging[Utils.Logger.categories.MODEL] or self._logging[Utils.Logger.categories.EVAL]:
+            self.logger.add_file_writer(
+                self.get_name(),
+                tf.summary.FileWriter(Utils.safe_path('logs/TensorBoard/' + self.get_name(), is_dir=True),
+                                      tf.get_default_graph()))
+
     def define_training_routine(self, optimizer=tf.train.AdamOptimizer, *args, **kwargs) -> tf.Tensor:
         """Defines the training routine based on what type of optimizer to be used (default AdamOptimizer)"""
-        with tf.name_scope(self.get_name() + '/Train'):
-            self.training_op = optimizer(learning_rate=self._learning_rate, *args, **kwargs).minimize(self.loss)
+        self.training_op = optimizer(learning_rate=self._learning_rate, *args, **kwargs).minimize(self.loss)
         self.log('Define training routine as {} with learning_rate {}'.format(optimizer.__name__, self._learning_rate),
                  Utils.Logger.categories.ARCHITECTURE)
         return self.training_op
@@ -377,12 +375,11 @@ class TextNet:
         """Adds an accuracy evaluation op to the end of the network. Default logits are the last-added layer"""
         if logits is None:
             logits = self.last_added
-        with tf.name_scope(self.get_name() + '/Evaluate'):
-            self.accuracy = tf.reduce_mean(tf.cast(tf.nn.in_top_k(logits, self.y, top_k), tf.float32),
-                                           name='accuracy_top{}'.format(top_k))
-            if self._logging[Utils.Logger.categories.EVAL]:
-                self.logger.add_summary(self.get_name(), tf.summary.scalar('accuracy', self.accuracy))
-                self.log('Add accuracy summary')
+        self.accuracy = tf.reduce_mean(tf.cast(tf.nn.in_top_k(logits, self.y, top_k), tf.float32),
+                                       name='accuracy_top{}'.format(top_k))
+        if self._logging[Utils.Logger.categories.EVAL]:
+            self.logger.add_summary(self.get_name(), tf.summary.scalar('accuracy', self.accuracy))
+            self.log('Add accuracy summary')
         return self.accuracy
 
     def checkpoint(self, epoch: int, sess: tf.Session, ops: list, feed_dict: dict) -> None:
