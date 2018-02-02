@@ -275,7 +275,7 @@ class TextNet:
         self._logging[Utils.Logger.categories.GLOBAL] = logging
         self._log_time = time.gmtime if gm_time else time.localtime
         self.encoding = encoding
-        self.x = None
+        self.X = None
         self.y = None
         self.last_added = None
         self.loss = None
@@ -318,11 +318,11 @@ class TextNet:
         self._check_closed()
         with tf.name_scope(self.get_name()):
             with tf.name_scope('Input'):
-                self.x = tf.placeholder(input_type, shape=input_shape, name='X')
+                self.X = tf.placeholder(input_type, shape=input_shape, name='X')
                 self.y = tf.placeholder(output_type, shape=output_shape, name='y')
-        self.last_added = self.x
+        self.last_added = self.X
         self.log('Initialize input layer', Utils.Logger.categories.ARCHITECTURE)
-        return self.x, self.y
+        return self.X, self.y
 
     def add_dense_layer(self, n_neurons, kernel_initializer=None, scope_name='', *args, **kwargs) -> tf.Tensor:
         """Adds a dense layer to this neural network
