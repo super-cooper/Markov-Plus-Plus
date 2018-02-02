@@ -370,12 +370,16 @@ class TextNet:
             self.loss = multiplier * loss_fn(error_fn(*args, **kwargs), name='loss')
             if self._logging[Utils.Logger.categories.LOSS]:
                 self.logger.add_summary(Utils.Logger.categories.LOSS, tf.summary.scalar('loss', self.loss))
+        self.log('Close model with {}({})'.format(loss_fn.__name__, error_fn.__name__),
+                 Utils.Logger.categories.ARCHITECTURE)
         return self.loss
 
     def define_training_routine(self, optimizer=tf.train.AdamOptimizer, *args, **kwargs) -> tf.Tensor:
         """Defines the training routine based on what type of optimizer to be used (default AdamOptimizer)"""
         with tf.name_scope('Train'):
             self.training_op = optimizer(learning_rate=self._learning_rate, *args, **kwargs).minimize(self.loss)
+        self.log('Define training routine as {} with learning_rate {}'.format(optimizer.__name__, self._learning_rate),
+                 Utils.Logger.categories.ARCHITECTURE)
         return self.training_op
 
     def add_eval_accuracy(self, logits=None, top_k=1) -> tf.Tensor:
@@ -388,7 +392,19 @@ class TextNet:
                                                name='accuracy_top{}'.format(top_k))
                 if self._logging[Utils.Logger.categories.EVAL]:
                     self.logger.add_summary('accuracy', tf.summary.scalar('accuracy', self.accuracy))
+                    self.log('Add accuracy summary')
         return self.accuracy
+
+    def checkpoint(self, epoch: int, sess: tf.Session, feed_dict: dict) -> None:
+        """Logs a checkpoint in training for this neural network. A tf.Session must be active for this method to work"""
+        evals = self.logger.summaries[self._name]
+        writer = self.logger.writers[self._name]
+        results = sess.run(evals, feed_dict=feed_dict)
+        for r, tensor in zip(results, evals):
+            if isinstance(r, (float, int)):
+                self.log('{} at epoch {}: {}'.format(tensor.name, epoch, r), Utils.Logger.categories.STEPS)
+            else:
+                writer.add_summary(results, epoch)
 
     def _check_closed(self) -> bool:
         """Checks to see if the architecture is done being set up; throws an exception if it is"""
