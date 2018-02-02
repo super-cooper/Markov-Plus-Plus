@@ -421,6 +421,9 @@ class TextRNN(TextNet):
                     name: The name of this neural network
                 """
         super().__init__(*args, **kwargs)
+        with tf.name_scope(TextNet.EXTERNAL):
+            # No dropout by default
+            self.keep_prob = tf.placeholder_with_default(1.0, shape=(), name='keep_probability')
 
     def add_recurrent_layers(self,
                              n_neurons,
