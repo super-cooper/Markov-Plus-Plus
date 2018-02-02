@@ -448,10 +448,11 @@ class TextRNN(TextNet):
         # Apply a dropout wrapper to each layer
         cells_drop = [tf.nn.rnn_cell.DropoutWrapper(cell, input_keep_prob=dropout_keep_prob) for cell in cells]
         # Wrap the cells in a greater recurrent context
-        multi_layer_cell = tf.contrib.rnn.MultiRNNCell(cells_drop)
+        multi_layer_cell = tf.nn.rnn_cell.MultiRNNCell(cells_drop)
         # Generate the output of the hidden layers (This can connect directly to the output layer)
-        outputs, states = tf.nn.dynamic_rnn(multi_layer_cell, self.X, self.y.dtype)
+        outputs, states = tf.nn.dynamic_rnn(multi_layer_cell, self.X, self.y.dtype, scope='Hidden')
         self.last_added = states[-1][1]
+        self.log('Add {} recurrent layers with {} neurons each'.format(n_layers, n_neurons))
         return self.last_added
 
 
