@@ -333,6 +333,16 @@ class TextNet:
         self.log('Add batch normalization layer under name ' + scope_name, Utils.Logger.categories.ARCHITECTURE)
         return self.last_added
 
+    def activate(self, activate=tf.nn.selu, scope_name=None, *args, **kwargs) -> tf.Tensor:
+        """Adds an activation function to the most recently added layer"""
+        if scope_name is None:
+            scope_name = 'Hidden'
+        with tf.name_scope(self.get_name()):
+            with tf.name_scope(scope_name):
+                self.last_added = activate(self.last_added, *args, **kwargs)
+        self.log('Activate {} with {}'.format(scope_name, activate.__name__))
+        return self.last_added
+
 
 class TextRNN(TextNet):
     """Class that represents a recurrent neural network used for text generation/classification"""
