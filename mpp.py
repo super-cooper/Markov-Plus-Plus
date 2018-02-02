@@ -438,9 +438,13 @@ class TextRNN(TextNet):
             args and kwargs go to the cell constructor
         """
         self._check_closed()
+        # Build independent layers
         cells = [cell_type(n_neurons, *args, **kwargs) for _ in range(n_layers)]
+        # Apply a dropout wrapper to each layer
         cells_drop = [tf.nn.rnn_cell.DropoutWrapper(cell, input_keep_prob=dropout_keep_prob) for cell in cells]
+        # Wrap the cells in a greater recurrent context
         multi_layer_cell = tf.contrib.rnn.MultiRNNCell(cells_drop)
+        # Generate the output of the hidden layers (This can connect directly to the output layer)
         outputs, states = tf.nn.dynamic_rnn(multi_layer_cell, self.X, self.y.dtype)
         self.last_added = states[-1][1]
         return self.last_added
