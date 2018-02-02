@@ -304,8 +304,8 @@ class TextNet:
                         output_type=tf.float32, output_shape=None) -> Tuple[tf.Tensor, tf.Tensor]:
         """Adds an input layer to this network's architecture"""
         self._check_closed()
-        self.X = tf.placeholder(input_type, shape=input_shape, name='X')
-        self.y = tf.placeholder(output_type, shape=output_shape, name='y')
+        self.X = tf.placeholder(dtype=input_type, shape=input_shape, name='X')
+        self.y = tf.placeholder(dtype=output_type, shape=output_shape, name='y')
         self.last_added = self.X
         self.log('Initialize input layer', Utils.Logger.categories.ARCHITECTURE)
         return self.X, self.y
@@ -427,6 +427,7 @@ class TextRNN(TextNet):
                     name: The name of this neural network
                 """
         super().__init__(*args, **kwargs)
+        self.outputs = None
         with tf.name_scope(TextNet.EXTERNAL):
             # No dropout by default
             self.keep_prob = tf.placeholder_with_default(1.0, shape=(), name='keep_probability')
@@ -456,7 +457,7 @@ class TextRNN(TextNet):
         # Wrap the cells in a greater recurrent context
         multi_layer_cell = tf.nn.rnn_cell.MultiRNNCell(cells_drop)
         # Generate the output of the hidden layers (This can connect directly to the output layer)
-        outputs, states = tf.nn.dynamic_rnn(multi_layer_cell, self.X, self.y.dtype, scope='Hidden')
+        self.outputs, states = tf.nn.dynamic_rnn(multi_layer_cell, self.X, self.X.dtype, scope='Hidden')
         self.last_added = states[-1][1]
         self.log('Add {} recurrent layers with {} neurons each'.format(n_layers, n_neurons))
         return self.last_added
