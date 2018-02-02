@@ -160,7 +160,7 @@ class Utils:
 
     class Logger:
         """Class used for centralized logging so files are written cleanly and efficiently"""
-        _log_types = ['ARCHITECTURE', 'STEPS', 'MISC', 'GLOBAL']
+        _log_types = ['ARCHITECTURE', 'LOSS', 'MISC', 'GLOBAL']
         categories = namedtuple('LogTypes', _log_types)._make(_log_types)
 
         def __init__(self, interval=60) -> None:
@@ -172,6 +172,7 @@ class Utils:
             self.message_queue = defaultdict(list)
             self._waiting = set()
             self._write = False
+            self.summaries = {}
             self.refresh_period = interval
             self.thread = threading.Thread(target=self.flush, args=())
             self.thread.daemon = True
@@ -205,6 +206,10 @@ class Utils:
                     log.write('\n'.join(self.message_queue[file]))
                 self.message_queue[file].clear()
             self._waiting.clear()
+
+        def add_summary(self, category: str, tracking: tf.Tensor) -> None:
+            """Adds a summary op to the logger"""
+            self.summaries[category] = tracking
 
     @staticmethod
     def unicode_range(encoding: str) -> int:
@@ -261,7 +266,7 @@ class TextNet:
             raise ValueError('Cannot have different variables of same type with same name: {}'.format(self._name))
         self.__class__.names.add(self._name)
         self._log_file = Utils.safe_path('logs/' + log_file if log_file is not None else self._name + '-log')
-        self._logging = {_type: (_type in exclude) for _type in Utils.Logger.categories}
+        self._logging = {_type: (_type not in exclude) for _type in Utils.Logger.categories}
         self._logging[Utils.Logger.categories.GLOBAL] = logging
         self._log_time = time.gmtime if gm_time else time.localtime
         self.encoding = encoding
@@ -340,7 +345,7 @@ class TextNet:
         with tf.name_scope(self.get_name()):
             with tf.name_scope(scope_name):
                 self.last_added = activate(self.last_added, *args, **kwargs)
-        self.log('Activate {} with {}'.format(scope_name, activate.__name__))
+        self.log('Activate {} with {}'.format(scope_name, activate.__name__), Utils.Logger.categories.ARCHITECTURE)
         return self.last_added
 
     def close(self, loss_fn=tf.reduce_mean, error_fn=tf.nn.sparse_softmax_cross_entropy_with_logits, *args, **kwargs) \
@@ -349,6 +354,9 @@ class TextNet:
         self._closed = True
         with tf.name_scope(self.get_name()):
             self.loss = loss_fn(error_fn(*args, **kwargs), name='loss')
+            if self._logging[Utils.Logger.categories.LOSS]:
+                self.logger.add_summary(Utils.Logger.categories.LOSS, tf.summary.scalar('loss', self.loss))
+
         return self.loss
 
     def _check_closed(self) -> bool:
