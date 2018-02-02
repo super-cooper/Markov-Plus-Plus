@@ -429,7 +429,7 @@ class TextRNN(TextNet):
                              n_neurons,
                              n_layers,
                              cell_type=tf.nn.rnn_cell.LSTMCell,
-                             dropout_keep_prob=0.5,
+                             dropout_keep_prob=None,
                              *args, **kwargs) -> tf.Tensor:
         """Adds recurrent layers of the RNN using a specific cell architecture
 
@@ -437,10 +437,12 @@ class TextRNN(TextNet):
             n_neurons: The number of neurons per layer
             n_layers: The number of hidden layers
             cell_type: The type of cell to use in the hidden layers (default LSTM)
-            dropout_keep_prob: The probability of a neuron staying active after dropout (default 0.5)
+            dropout_keep_prob: A placeholder to control the keep-probability of dropout during training
             args and kwargs go to the cell constructor
         """
         self._check_closed()
+        if dropout_keep_prob is None:
+            dropout_keep_prob = self.keep_prob
         # Build independent layers
         cells = [cell_type(n_neurons, *args, **kwargs) for _ in range(n_layers)]
         # Apply a dropout wrapper to each layer
