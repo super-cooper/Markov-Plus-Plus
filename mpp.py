@@ -309,7 +309,7 @@ class TextNet:
 
     def __str__(self) -> str:
         """Returns a string representation of this TextRNN object (includes pertinent information)"""
-        return self.__class__.__name__ + '(name={}, learning_rate={}'.format(
+        return self.__class__.__name__ + '(name={}, learning_rate={})'.format(
             self._name, self._learning_rate)
 
     def add_input_layer(self, input_type=tf.float32, input_shape=None,
