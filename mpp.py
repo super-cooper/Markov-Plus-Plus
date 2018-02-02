@@ -402,9 +402,15 @@ class TextNet:
         results = sess.run(evals, feed_dict=feed_dict)
         for r, tensor in zip(results, evals):
             if isinstance(r, (float, int)):
-                self.log('{} at epoch {}: {}'.format(tensor.name, epoch, r), Utils.Logger.categories.STEPS)
+                self.log('Epoch {} {}: {}'.format(epoch, tensor.name, r), Utils.Logger.categories.STEPS)
             else:
                 writer.add_summary(results, epoch)
+
+    def step(self, sess: tf.Session, feed_dict: dict, ops: list):
+        """Runs one step of training. sess must be an active TensorFlow Session in order for this to work"""
+        feed_dict[self.is_training] = True
+        ops += self.update_ops
+        return sess.run(ops, feed_dict)
 
     def _check_closed(self) -> bool:
         """Checks to see if the architecture is done being set up; throws an exception if it is"""
