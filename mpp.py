@@ -362,7 +362,8 @@ class TextNet:
 
     def define_training_routine(self, optimizer=tf.train.AdamOptimizer, *args, **kwargs) -> tf.Tensor:
         """Defines the training routine based on what type of optimizer to be used (default AdamOptimizer)"""
-        self.training_op = optimizer(learning_rate=self._learning_rate, *args, **kwargs).minimize(self.loss)
+        with tf.name_scope('Train'):
+            self.training_op = optimizer(learning_rate=self._learning_rate, *args, **kwargs).minimize(self.loss)
         return self.training_op
 
     def add_eval_accuracy(self, logits=None, top_k=1) -> tf.Tensor:
