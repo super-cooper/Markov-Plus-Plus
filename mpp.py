@@ -3,9 +3,9 @@ import re
 import sys
 import threading
 import time
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from glob import glob
-from typing import Dict, List, Union, Tuple
+from typing import Dict, List, Union, Tuple, Iterable
 
 import numpy as np
 import tensorflow as tf
@@ -160,6 +160,8 @@ class Utils:
 
     class Logger:
         """Class used for centralized logging so files are written cleanly and efficiently"""
+        _log_types = ['ARCHITECTURE', 'STEPS', 'MISC', 'GLOBAL']
+        categories = namedtuple('LogTypes', _log_types)._make(_log_types)
 
         def __init__(self, interval=60) -> None:
             """Constructor
@@ -231,7 +233,10 @@ class TextNet:
 
     def __init__(self,
                  learning_rate=0.001,
-                 logging: bool = False, verbose=False, gm_time=False, log_file: str = None,
+                 logging: bool = False,
+                 verbose=False, gm_time=False,
+                 log_file: str = None,
+                 exclude: Iterable[str]=(),
                  encoding='utf-8',
                  name=None) -> None:
         """Creates an instance of an Text Neural Network
@@ -242,6 +247,7 @@ class TextNet:
             verbose: Tells if updates to this neural network will be printed to the console
             gm_time: Sets logging to Greenwich meantime rather than local time
             log_file: The name of the log file for this TextNet
+            exclude: Categories to not be logged. For options, see Utils.Logger._log_types
             encoding: The type of encoding for the characters used by this TextRNN
             name: The name of this neural network
         """
@@ -255,7 +261,8 @@ class TextNet:
             raise ValueError('Cannot have different variables of same type with same name: {}'.format(self._name))
         self.__class__.names.add(self._name)
         self._log_file = Utils.safe_path('logs/' + log_file if log_file is not None else self._name + '-log')
-        self._logging = logging
+        self._logging = {_type: (_type in exclude) for _type in Utils.Logger.categories}
+        self._logging[Utils.Logger.categories.GLOBAL] = logging
         self._log_time = time.gmtime if gm_time else time.localtime
         self.encoding = encoding
         self.x = None
@@ -271,13 +278,13 @@ class TextNet:
         """Returns the generic name of this RNN"""
         return self._name
 
-    def log(self, message: str = None) -> None:
+    def log(self, message: str = None, category: str=None) -> None:
         """Logs a message or just the time if no message is provided. Covers both printing and file logging"""
-        out = time.strftime('[%a, %d %b %Y %H:%M:%S] ', self._log_time()) + '[' + self.get_name() + ']' \
+        out = time.strftime('[%a, %d %b %Y %H:%M:%S] ', self._log_time()) + '[' + self.get_name() + '] ' \
             + (message if message is not None else '')
-        if self._verbose:
+        if self._verbose and self._logging[category]:
             print(out)
-        if self._logging:
+        if self._logging[Utils.Logger.categories.GLOBAL] and self._logging[category]:
             self.logger.log(out, self._log_file)
 
     def __str__(self) -> str:
@@ -293,7 +300,7 @@ class TextNet:
                 self.x = tf.placeholder(input_type, shape=input_shape, name='X')
                 self.y = tf.placeholder(output_type, shape=output_shape, name='y')
         self.last_added = self.x
-        self.log('Initialize input layer')
+        self.log('Initialize input layer', Utils.Logger.categories.ARCHITECTURE)
         return self.x, self.y
 
     def add_dense_layer(self, n_neurons, kernel_initializer=None, scope_name=None, *args, **kwargs) -> tf.Tensor:
@@ -312,7 +319,7 @@ class TextNet:
             with tf.name_scope(scope_name):
                 self.last_added = tf.layers.dense(self.last_added, n_neurons, kernel_initializer=kernel_initializer,
                                                   name='Fully_Connected', *args, **kwargs)
-        self.log('Add dense layer under name ' + scope_name)
+        self.log('Add dense layer under name ' + scope_name, Utils.Logger.categories.ARCHITECTURE)
         return self.last_added
 
     def add_batch_norm_layer(self, scope_name=None, *args, **kwargs) -> tf.Tensor:
@@ -323,7 +330,7 @@ class TextNet:
             with tf.name_scope(scope_name):
                 self.last_added = tf.layers.batch_normalization(self.last_added, training=self.training,
                                                                 *args, **kwargs)
-        self.log('Add batch normalization layer under name ' + scope_name)
+        self.log('Add batch normalization layer under name ' + scope_name, Utils.Logger.categories.ARCHITECTURE)
         return self.last_added
 
 
