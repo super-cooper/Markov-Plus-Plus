@@ -268,8 +268,10 @@ class TextNet:
         self.x = None
         self.y = None
         self.last_added = None
+        self.loss = None
         with tf.name_scope(TextNet.EXTERNAL):
             self.training = tf.placeholder_with_default(False, shape=(), name='is_training')
+        self._closed = False
         global logger
         self.logger = logger
         self.log('Initialize ' + str(self))
@@ -295,6 +297,7 @@ class TextNet:
     def add_input_layer(self, input_type=tf.float32, input_shape=None,
                         output_type=tf.float32, output_shape=None) -> Tuple[tf.Tensor, tf.Tensor]:
         """Adds an input layer to this network's architecture"""
+        self._check_closed()
         with tf.name_scope(self.get_name()):
             with tf.name_scope('Input'):
                 self.x = tf.placeholder(input_type, shape=input_shape, name='X')
@@ -303,7 +306,7 @@ class TextNet:
         self.log('Initialize input layer', Utils.Logger.categories.ARCHITECTURE)
         return self.x, self.y
 
-    def add_dense_layer(self, n_neurons, kernel_initializer=None, scope_name=None, *args, **kwargs) -> tf.Tensor:
+    def add_dense_layer(self, n_neurons, kernel_initializer=None, scope_name='', *args, **kwargs) -> tf.Tensor:
         """Adds a dense layer to this neural network
 
         Keyword Arguments:
@@ -311,10 +314,9 @@ class TextNet:
             kernel_initializer: The random initializer for the layer (default He initialization)
             scope_name: The name of the greater layer (default 'Hidden')
         """
+        self._check_closed()
         if kernel_initializer is None:
             kernel_initializer = TextNet.he_init
-        if scope_name is None:
-            scope_name = 'Hidden'
         with tf.name_scope(self.get_name()):
             with tf.name_scope(scope_name):
                 self.last_added = tf.layers.dense(self.last_added, n_neurons, kernel_initializer=kernel_initializer,
@@ -322,26 +324,38 @@ class TextNet:
         self.log('Add dense layer under name ' + scope_name, Utils.Logger.categories.ARCHITECTURE)
         return self.last_added
 
-    def add_batch_norm_layer(self, scope_name=None, *args, **kwargs) -> tf.Tensor:
+    def add_batch_norm_layer(self, scope_name='', *args, **kwargs) -> tf.Tensor:
         """Add a batch normalization layer to the model"""
-        if scope_name is None:
-            scope_name = 'Hidden'
+        self._check_closed()
         with tf.name_scope(self.get_name()):
             with tf.name_scope(scope_name):
                 self.last_added = tf.layers.batch_normalization(self.last_added, training=self.training,
-                                                                *args, **kwargs)
+                                                                name='Batch_Norm', *args, **kwargs)
         self.log('Add batch normalization layer under name ' + scope_name, Utils.Logger.categories.ARCHITECTURE)
         return self.last_added
 
-    def activate(self, activate=tf.nn.selu, scope_name=None, *args, **kwargs) -> tf.Tensor:
+    def activate(self, activate=tf.nn.selu, scope_name='', *args, **kwargs) -> tf.Tensor:
         """Adds an activation function to the most recently added layer"""
-        if scope_name is None:
-            scope_name = 'Hidden'
+        self._check_closed()
         with tf.name_scope(self.get_name()):
             with tf.name_scope(scope_name):
                 self.last_added = activate(self.last_added, *args, **kwargs)
         self.log('Activate {} with {}'.format(scope_name, activate.__name__))
         return self.last_added
+
+    def close(self, loss_fn=tf.reduce_mean, error_fn=tf.nn.sparse_softmax_cross_entropy_with_logits, *args, **kwargs) \
+            -> tf.Tensor:
+        """Closes the network and returns the loss op Tensor"""
+        self._closed = True
+        with tf.name_scope(self.get_name()):
+            self.loss = loss_fn(error_fn(*args, **kwargs), name='loss')
+        return self.loss
+
+    def _check_closed(self) -> bool:
+        """Checks to see if the architecture is done being set up; throws an exception if it is"""
+        if self._closed:
+            raise EnvironmentError('Cannot add layers to this network after the architecture has been closed!')
+        return True
 
 
 class TextRNN(TextNet):
